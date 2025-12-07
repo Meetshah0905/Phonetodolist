@@ -5,7 +5,7 @@ import { LiquidCard } from "@/components/ui/LiquidCard";
 import { useGame } from "@/lib/store";
 import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Plus, Check, Clock, Calendar as CalendarIcon, Pencil, Trash2, TrendingUp, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Check, Clock, Calendar as CalendarIcon, Pencil, Trash2, TrendingUp, Sparkles, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 export default function Home() {
   const { tasks, toggleTask, addTask, updateTask, deleteTask, getAISuggestion, points, isGoogleCalendarConnected, syncToGoogleCalendar } = useGame();
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [viewDate, setViewDate] = useState(new Date());
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   
   // Task Dialog State
@@ -46,6 +47,7 @@ export default function Home() {
 
   const completedCount = filteredTasks.filter(t => t.completed).length;
   const totalCount = filteredTasks.length;
+  const allTasksCompleted = totalCount > 0 && completedCount === totalCount;
 
   // Time-based Greeting
   const hour = new Date().getHours();
@@ -168,34 +170,54 @@ export default function Home() {
         <GlowingBalance />
       </div>
 
-      {/* Date Navigator Strip - Scrollable */}
-      <div className="mb-6 overflow-x-auto pb-2 scrollbar-hide">
-        <div className="flex gap-2 min-w-max px-1">
-            {dayOffsets.map((offset) => {
-                const date = addDays(new Date(), offset);
-                const isSelected = selectedDate.toDateString() === date.toDateString();
-                const isToday = offset === 0;
-                
-                return (
-                    <button
-                        key={offset}
-                        onClick={() => setSelectedDate(date)}
-                        className={cn(
-                            "flex flex-col items-center justify-center w-[60px] h-[64px] rounded-[16px] transition-all border",
-                            isSelected 
-                                ? "bg-[#0A84FF] border-[#0A84FF] text-white shadow-lg shadow-blue-500/20 scale-105" 
-                                : "bg-[#1C1C1E] border-white/5 text-[#8E8E93] hover:bg-[#2C2C2E]"
-                        )}
-                    >
-                        <span className="text-[10px] font-bold uppercase mb-0.5">{format(date, "EEE")}</span>
-                        <span className={cn("text-lg font-bold", isSelected ? "text-white" : "text-white/80")}>
-                            {format(date, "d")}
-                        </span>
-                        {isToday && <div className="w-1 h-1 rounded-full bg-[#0A84FF] mt-1" />}
-                    </button>
-                );
-            })}
+      {/* Date Navigator Strip */}
+      <div className="flex items-center gap-2 mb-6">
+        <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setViewDate(addDays(viewDate, -3))} 
+            className="text-[#8E8E93] hover:text-white shrink-0 hover:bg-white/10 rounded-full"
+        >
+             <ChevronLeft />
+        </Button>
+        
+        <div className="overflow-x-auto pb-2 scrollbar-hide flex-1">
+            <div className="flex gap-2 min-w-max px-1 justify-center">
+                {dayOffsets.map((offset) => {
+                    const date = addDays(viewDate, offset);
+                    const isSelected = selectedDate.toDateString() === date.toDateString();
+                    const isToday = new Date().toDateString() === date.toDateString();
+                    
+                    return (
+                        <button
+                            key={offset}
+                            onClick={() => setSelectedDate(date)}
+                            className={cn(
+                                "flex flex-col items-center justify-center w-[60px] h-[64px] rounded-[16px] transition-all border",
+                                isSelected 
+                                    ? "bg-[#0A84FF] border-[#0A84FF] text-white shadow-lg shadow-blue-500/20 scale-105" 
+                                    : "bg-[#1C1C1E] border-white/5 text-[#8E8E93] hover:bg-[#2C2C2E]"
+                            )}
+                        >
+                            <span className="text-[10px] font-bold uppercase mb-0.5">{format(date, "EEE")}</span>
+                            <span className={cn("text-lg font-bold", isSelected ? "text-white" : "text-white/80")}>
+                                {format(date, "d")}
+                            </span>
+                            {isToday && <div className="w-1 h-1 rounded-full bg-[#0A84FF] mt-1" />}
+                        </button>
+                    );
+                })}
+            </div>
         </div>
+
+        <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setViewDate(addDays(viewDate, 3))} 
+            className="text-[#8E8E93] hover:text-white shrink-0 hover:bg-white/10 rounded-full"
+        >
+             <ChevronRight />
+        </Button>
       </div>
 
       {/* Stats & Weekly Activity */}
@@ -356,7 +378,24 @@ export default function Home() {
       </div>
 
       {/* Task List */}
-      <div className="space-y-3 pb-24">
+      <div className={cn(
+        "space-y-3 pb-24 transition-all duration-500 rounded-[24px]",
+        allTasksCompleted ? "p-6 bg-gradient-to-b from-[#0A84FF]/10 to-transparent border border-[#0A84FF]/20 shadow-[0_0_50px_-10px_rgba(10,132,255,0.3)]" : ""
+      )}>
+        {allTasksCompleted && (
+            <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 text-center"
+            >
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#30D158]/20 text-[#30D158] mb-2 shadow-[0_0_20px_rgba(48,209,88,0.4)]">
+                    <Check size={24} strokeWidth={3} />
+                </div>
+                <h3 className="text-xl font-bold text-white">All Tasks Complete!</h3>
+                <p className="text-[#8E8E93] text-sm">Great job crushing your goals today.</p>
+            </motion.div>
+        )}
+
         <AnimatePresence>
         {filteredTasks.map((task) => (
           <LiquidCard
