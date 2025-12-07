@@ -4,8 +4,9 @@ import { MobileShell } from "@/components/layout/MobileShell";
 import { useGame } from "@/lib/store";
 import { LiquidCard } from "@/components/ui/LiquidCard";
 import { cn } from "@/lib/utils";
-import { Trophy, Shield, Zap, Target, Star, LogOut } from "lucide-react";
+import { Trophy, Shield, Zap, Target, Star, LogOut, Calendar, Bell, ChevronRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 const RANKS = [
     { name: "Iron 1", min: 0, color: "text-gray-400", bg: "from-gray-500/20" },
@@ -128,6 +129,39 @@ export default function Profile() {
             </div>
             <div className="text-2xl font-bold text-white">12</div>
             <div className="text-[10px] font-bold text-[#8E8E93] uppercase">Day Streak</div>
+        </div>
+      </div>
+
+      {/* Integrations & Settings */}
+      <div className="space-y-4 mb-8">
+        <h3 className="text-sm font-bold text-[#8E8E93] uppercase pl-2">Integrations & Settings</h3>
+        
+        {/* Google Calendar */}
+        <div className="bg-[#1C1C1E] rounded-[20px] p-4 border border-white/10 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
+                    <Calendar size={20} />
+                </div>
+                <div>
+                    <div className="font-bold text-white text-sm">Google Calendar</div>
+                    <div className="text-[10px] text-[#8E8E93]">Sync tasks & habits</div>
+                </div>
+            </div>
+            <Switch />
+        </div>
+
+        {/* Task Notifications */}
+        <div className="bg-[#1C1C1E] rounded-[20px] p-4 border border-white/10 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center text-yellow-500">
+                    <Bell size={20} />
+                </div>
+                <div>
+                    <div className="font-bold text-white text-sm">Task Reminders</div>
+                    <div className="text-[10px] text-[#8E8E93]">Notify for incomplete tasks</div>
+                </div>
+            </div>
+            <Switch defaultChecked />
         </div>
       </div>
 

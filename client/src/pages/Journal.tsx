@@ -4,7 +4,8 @@ import { LiquidCard } from "@/components/ui/LiquidCard";
 import { useGame } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Mic, StopCircle, ExternalLink, Check } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Mic, StopCircle, ExternalLink, Check, Bell } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { format, subDays, isSameDay } from "date-fns";
@@ -71,6 +72,20 @@ export default function Journal() {
         >
             <ExternalLink size={12} /> Open Notion
         </Button>
+      </div>
+
+      {/* Notification Setting */}
+      <div className="bg-[#1C1C1E] border border-white/10 rounded-[20px] p-4 mb-6 flex items-center justify-between">
+         <div className="flex items-center gap-3">
+             <div className="w-8 h-8 rounded-full bg-[#0A84FF]/10 flex items-center justify-center text-[#0A84FF]">
+                 <Bell size={16} />
+             </div>
+             <div>
+                 <div className="font-bold text-white text-xs">Daily Reminder</div>
+                 <div className="text-[10px] text-[#8E8E93]">Notification at 11:11 PM</div>
+             </div>
+         </div>
+         <Switch defaultChecked />
       </div>
 
       {/* Streak Calendar - iPhone Style */}

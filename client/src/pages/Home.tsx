@@ -28,6 +28,7 @@ export default function Home() {
   
   const [taskTitle, setTaskTitle] = useState("");
   const [taskTime, setTaskTime] = useState("");
+  const [taskPoints, setTaskPoints] = useState<string>("");
   const [taskNotes, setTaskNotes] = useState("");
   const [aiSuggestion, setAiSuggestion] = useState<number | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -65,6 +66,7 @@ export default function Home() {
         setIsAnalyzing(true);
         const points = await getAISuggestion(taskTitle);
         setAiSuggestion(points);
+        setTaskPoints(points.toString());
         setIsAnalyzing(false);
     }
   };
@@ -73,6 +75,7 @@ export default function Home() {
     setIsEditing(false);
     setTaskTitle("");
     setTaskTime("");
+    setTaskPoints("");
     setTaskNotes("");
     setAiSuggestion(null);
     setIsDialogOpen(true);
@@ -83,6 +86,7 @@ export default function Home() {
     setEditingId(task.id);
     setTaskTitle(task.title);
     setTaskTime(task.time);
+    setTaskPoints(task.points.toString());
     setTaskNotes(task.notes || "");
     setAiSuggestion(task.points);
     setIsDialogOpen(true);
@@ -91,17 +95,20 @@ export default function Home() {
   const handleSaveTask = () => {
     if (!taskTitle) return;
     
+    const finalPoints = parseInt(taskPoints) || aiSuggestion || 100;
+
     if (isEditing && editingId) {
         updateTask(editingId, {
             title: taskTitle,
             time: taskTime || "30m",
+            points: finalPoints,
             notes: taskNotes
         });
     } else {
         addTask({
             title: taskTitle,
             time: taskTime || "30m",
-            points: aiSuggestion || 100,
+            points: finalPoints,
             date: selectedDate.toISOString().split("T")[0],
             priority: "medium",
             notes: taskNotes
@@ -281,15 +288,37 @@ export default function Home() {
                     )}
                 </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="time" className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">Estimated Time</Label>
-                <Input
-                  id="time"
-                  value={taskTime}
-                  onChange={(e) => setTaskTime(e.target.value)}
-                  className="bg-[#2C2C2E] border-transparent text-white focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] rounded-[12px] h-12"
-                  placeholder="e.g. 30m"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="time" className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">Estimated Time</Label>
+                  <Input
+                    id="time"
+                    value={taskTime}
+                    onChange={(e) => setTaskTime(e.target.value)}
+                    className="bg-[#2C2C2E] border-transparent text-white focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] rounded-[12px] h-12"
+                    placeholder="e.g. 30m"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="points" className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">Points (XP)</Label>
+                  <div className="relative">
+                    <Input
+                        id="points"
+                        type="number"
+                        value={taskPoints}
+                        onChange={(e) => setTaskPoints(e.target.value)}
+                        className="bg-[#2C2C2E] border-transparent text-white focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] rounded-[12px] h-12"
+                        placeholder="100"
+                    />
+                    {aiSuggestion && (
+                        <div className="absolute right-3 top-3.5 pointer-events-none">
+                            <span className="text-[10px] text-[#30D158] font-bold bg-[#30D158]/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                AI Suggested
+                            </span>
+                        </div>
+                    )}
+                  </div>
+                </div>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="notes" className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">Notes (Optional)</Label>
