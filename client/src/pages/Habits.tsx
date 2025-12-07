@@ -152,7 +152,7 @@ export default function Habits() {
                 <div className="flex items-center justify-between py-2 border-t border-white/5 pt-4 mt-2">
                     <div className="flex items-center gap-2">
                         <Calendar size={16} className="text-[#EA4335]" />
-                        <Label htmlFor="gcal" className="text-white font-medium cursor-pointer">Sync to Google Calendar</Label>
+                        <Label htmlFor="gcal" className="text-white font-medium cursor-pointer">Add to Google Calendar</Label>
                     </div>
                     <Switch id="gcal" checked={syncToCalendar} onCheckedChange={setSyncToCalendar} className="data-[state=checked]:bg-[#EA4335]" />
                 </div>

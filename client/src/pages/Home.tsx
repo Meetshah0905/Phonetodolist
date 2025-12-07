@@ -310,7 +310,10 @@ export default function Home() {
                         id="points"
                         type="number"
                         value={taskPoints}
-                        onChange={(e) => setTaskPoints(e.target.value)}
+                        onChange={(e) => {
+                            setTaskPoints(e.target.value);
+                            setAiSuggestion(null);
+                        }}
                         className="bg-[#2C2C2E] border-transparent text-white focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] rounded-[12px] h-12"
                         placeholder="100"
                     />
@@ -339,7 +342,7 @@ export default function Home() {
                 <div className="flex items-center justify-between py-2 px-1">
                     <div className="flex items-center gap-2">
                         <CalendarIcon size={16} className="text-[#EA4335]" />
-                        <Label htmlFor="gcal" className="text-white font-medium cursor-pointer">Sync to Google Calendar</Label>
+                        <Label htmlFor="gcal" className="text-white font-medium cursor-pointer">Add to Google Calendar</Label>
                     </div>
                     <Switch id="gcal" checked={syncToCalendar} onCheckedChange={setSyncToCalendar} className="data-[state=checked]:bg-[#EA4335]" />
                 </div>
