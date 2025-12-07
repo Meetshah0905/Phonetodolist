@@ -96,6 +96,12 @@ type GameState = {
   user: { name: string; email: string } | null;
   login: (email: string, name: string) => void;
   logout: () => void;
+
+  // Google Calendar
+  isGoogleCalendarConnected: boolean;
+  connectGoogleCalendar: () => void;
+  disconnectGoogleCalendar: () => void;
+  syncToGoogleCalendar: (item: { title: string; time?: string; date?: string; type?: string }) => void;
 };
 
 const GameContext = createContext<GameState | undefined>(undefined);
@@ -141,6 +147,40 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   ]);
   const [lifetimeXP, setLifetimeXP] = useState(0); // Start with 0 XP
   const [levelUp, setLevelUp] = useState({ show: false, newRank: "" });
+
+  // Google Calendar Integration
+  const [isGoogleCalendarConnected, setIsGoogleCalendarConnected] = useState(false);
+
+  const connectGoogleCalendar = () => {
+    // Mock OAuth flow
+    const popup = window.open("", "Google Login", "width=500,height=600");
+    if (popup) {
+        popup.document.write("<h1>Connecting to Google...</h1><p>Please wait...</p>");
+        setTimeout(() => {
+            popup.close();
+            setIsGoogleCalendarConnected(true);
+            toast({ title: "Google Calendar Connected", description: "Your account has been linked successfully." });
+        }, 1500);
+    }
+  };
+
+  const disconnectGoogleCalendar = () => {
+    setIsGoogleCalendarConnected(false);
+    toast({ title: "Disconnected", description: "Google Calendar has been unlinked." });
+  };
+
+  const syncToGoogleCalendar = (item: { title: string; time?: string; date?: string; type?: string }) => {
+    if (!isGoogleCalendarConnected) {
+        toast({ title: "Connect Google Calendar", description: "Please link your account in Profile settings first.", variant: "destructive" });
+        return;
+    }
+    
+    toast({ 
+        title: "Synced to Google Calendar", 
+        description: `Added: ${item.title}`, 
+        className: "bg-white text-black font-bold border-none" 
+    });
+  };
 
   const login = (email: string, name: string) => {
     setUser({ email, name });
@@ -494,7 +534,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         saveJournalEntry,
         user,
         login,
-        logout
+        logout,
+        
+        isGoogleCalendarConnected,
+        connectGoogleCalendar,
+        disconnectGoogleCalendar,
+        syncToGoogleCalendar
       }}
     >
       {children}

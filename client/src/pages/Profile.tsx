@@ -37,7 +37,7 @@ const RANKS = [
 ];
 
 export default function Profile() {
-  const { lifetimeXP, rank, nextRankXP, logout, user } = useGame();
+  const { lifetimeXP, rank, nextRankXP, logout, user, isGoogleCalendarConnected, connectGoogleCalendar, disconnectGoogleCalendar } = useGame();
   const [, setLocation] = useLocation();
   
   const currentRankIdx = RANKS.findIndex(r => r.name === rank);
@@ -144,10 +144,13 @@ export default function Profile() {
                 </div>
                 <div>
                     <div className="font-bold text-white text-sm">Google Calendar</div>
-                    <div className="text-[10px] text-[#8E8E93]">Sync tasks & habits</div>
+                    <div className="text-[10px] text-[#8E8E93]">{isGoogleCalendarConnected ? "Connected" : "Sync tasks & habits"}</div>
                 </div>
             </div>
-            <Switch />
+            <Switch 
+                checked={isGoogleCalendarConnected} 
+                onCheckedChange={(checked) => checked ? connectGoogleCalendar() : disconnectGoogleCalendar()} 
+            />
         </div>
 
         {/* Task Notifications */}

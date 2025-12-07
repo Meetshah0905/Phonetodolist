@@ -5,7 +5,7 @@ import { LiquidCard } from "@/components/ui/LiquidCard";
 import { useGame } from "@/lib/store";
 import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Plus, Check, Clock, Calendar as CalendarIcon, Pencil, Trash2, TrendingUp } from "lucide-react";
+import { Plus, Check, Clock, Calendar as CalendarIcon, Pencil, Trash2, TrendingUp, Sparkles, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -14,10 +14,11 @@ import { Label } from "@/components/ui/label";
 import { ProgressRing } from "@/components/ui/ProgressRing";
 import { CalendarModal } from "@/components/ui/CalendarModal";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 export default function Home() {
-  const { tasks, toggleTask, addTask, updateTask, deleteTask, getAISuggestion, points } = useGame();
+  const { tasks, toggleTask, addTask, updateTask, deleteTask, getAISuggestion, points, isGoogleCalendarConnected, syncToGoogleCalendar } = useGame();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   
@@ -32,6 +33,7 @@ export default function Home() {
   const [taskNotes, setTaskNotes] = useState("");
   const [aiSuggestion, setAiSuggestion] = useState<number | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [syncToCalendar, setSyncToCalendar] = useState(false);
 
   // Level Logic
   const level = Math.floor(points / 1000) + 1;
@@ -61,8 +63,8 @@ export default function Home() {
   ];
   const currentDayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
 
-  const handleTitleBlur = async () => {
-    if (taskTitle.length > 3 && !isEditing) {
+  const handleGeneratePoints = async () => {
+    if (taskTitle.length > 3) {
         setIsAnalyzing(true);
         const points = await getAISuggestion(taskTitle);
         setAiSuggestion(points);
@@ -77,6 +79,7 @@ export default function Home() {
     setTaskTime("");
     setTaskPoints("");
     setTaskNotes("");
+    setSyncToCalendar(false);
     setAiSuggestion(null);
     setIsDialogOpen(true);
   };
@@ -88,6 +91,7 @@ export default function Home() {
     setTaskTime(task.time);
     setTaskPoints(task.points.toString());
     setTaskNotes(task.notes || "");
+    setSyncToCalendar(false); 
     setAiSuggestion(task.points);
     setIsDialogOpen(true);
   };
@@ -112,6 +116,14 @@ export default function Home() {
             date: selectedDate.toISOString().split("T")[0],
             priority: "medium",
             notes: taskNotes
+        });
+    }
+
+    if (syncToCalendar && isGoogleCalendarConnected) {
+        syncToGoogleCalendar({
+            title: taskTitle,
+            time: taskTime,
+            date: selectedDate.toISOString().split("T")[0]
         });
     }
     
@@ -264,28 +276,20 @@ export default function Home() {
                     id="title"
                     value={taskTitle}
                     onChange={(e) => setTaskTitle(e.target.value)}
-                    onBlur={handleTitleBlur}
                     className="bg-[#2C2C2E] border-transparent text-white focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] pr-16 rounded-[12px] h-12"
                     placeholder="e.g. Finish Project Report"
                     />
-                    {isAnalyzing && (
-                        <div className="absolute right-3 top-3 flex items-center gap-2">
-                             <div className="w-4 h-4 rounded-full border-2 border-[#0A84FF] border-t-transparent animate-spin" />
-                             <span className="text-xs text-[#0A84FF] font-bold">Gemini AI...</span>
-                        </div>
-                    )}
-                    {!isAnalyzing && aiSuggestion && !isEditing && (
-                        <motion.div 
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            className="absolute right-3 top-3"
+                    <div className="absolute right-2 top-2">
+                        <Button 
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 rounded-full p-0 text-[#0A84FF] hover:bg-[#0A84FF]/10"
+                            onClick={handleGeneratePoints}
+                            disabled={isAnalyzing || taskTitle.length < 3}
                         >
-                            <span className="text-xs text-[#30D158] font-bold bg-[#30D158]/10 px-2 py-1 rounded-full border border-[#30D158]/20 flex items-center gap-1">
-                                <span className="w-2 h-2 rounded-full bg-[#30D158] animate-pulse" />
-                                +{aiSuggestion} PTS
-                            </span>
-                        </motion.div>
-                    )}
+                            {isAnalyzing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                        </Button>
+                    </div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -330,6 +334,16 @@ export default function Home() {
                   placeholder="Details..."
                 />
               </div>
+
+              {isGoogleCalendarConnected && (
+                <div className="flex items-center justify-between py-2 px-1">
+                    <div className="flex items-center gap-2">
+                        <CalendarIcon size={16} className="text-[#EA4335]" />
+                        <Label htmlFor="gcal" className="text-white font-medium cursor-pointer">Sync to Google Calendar</Label>
+                    </div>
+                    <Switch id="gcal" checked={syncToCalendar} onCheckedChange={setSyncToCalendar} className="data-[state=checked]:bg-[#EA4335]" />
+                </div>
+              )}
             </div>
             <Button onClick={handleSaveTask} className="w-full bg-[#0A84FF] text-white hover:bg-[#007AFF] font-bold rounded-[12px] h-12 text-base">
               {isEditing ? "Save Changes" : "Create Task"}

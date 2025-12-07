@@ -2,7 +2,7 @@ import { useState } from "react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { useGame } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { Check, ChevronDown, ChevronUp, Plus, Pencil, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Plus, Pencil, Trash2, Calendar } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 
 export default function Habits() {
-  const { habits, toggleHabit, addHabit, updateHabit, deleteHabit } = useGame();
+  const { habits, toggleHabit, addHabit, updateHabit, deleteHabit, isGoogleCalendarConnected, syncToGoogleCalendar } = useGame();
   const [openSections, setOpenSections] = useState(["morning", "afternoon", "evening", "night"]);
   
   const morningHabits = habits.filter(h => h.type === "morning");
@@ -29,6 +29,7 @@ export default function Habits() {
   const [habitType, setHabitType] = useState<"morning" | "afternoon" | "evening" | "night">("morning");
   const [habitPoints, setHabitPoints] = useState("10");
   const [habitMustDo, setHabitMustDo] = useState(false);
+  const [syncToCalendar, setSyncToCalendar] = useState(false);
 
   const handleOpenAdd = () => {
     setIsEditing(false);
@@ -36,6 +37,7 @@ export default function Habits() {
     setHabitType("morning");
     setHabitPoints("10");
     setHabitMustDo(false);
+    setSyncToCalendar(false);
     setIsDialogOpen(true);
   };
 
@@ -46,6 +48,7 @@ export default function Habits() {
     setHabitType(habit.type);
     setHabitPoints(habit.points.toString());
     setHabitMustDo(habit.mustDo);
+    setSyncToCalendar(false);
     setIsDialogOpen(true);
   };
 
@@ -79,6 +82,15 @@ export default function Habits() {
             resetTime: getResetTime(habitType)
         });
     }
+
+    if (syncToCalendar && isGoogleCalendarConnected) {
+        syncToGoogleCalendar({
+            title: habitTitle,
+            type: habitType,
+            date: "Daily"
+        });
+    }
+
     setIsDialogOpen(false);
   };
 
@@ -135,6 +147,16 @@ export default function Habits() {
                 <Label htmlFor="mustDo" className="text-white font-medium">Critical (Must Do)</Label>
                 <Switch id="mustDo" checked={habitMustDo} onCheckedChange={setHabitMustDo} className="data-[state=checked]:bg-[#FF9F0A]" />
               </div>
+              
+              {isGoogleCalendarConnected && (
+                <div className="flex items-center justify-between py-2 border-t border-white/5 pt-4 mt-2">
+                    <div className="flex items-center gap-2">
+                        <Calendar size={16} className="text-[#EA4335]" />
+                        <Label htmlFor="gcal" className="text-white font-medium cursor-pointer">Sync to Google Calendar</Label>
+                    </div>
+                    <Switch id="gcal" checked={syncToCalendar} onCheckedChange={setSyncToCalendar} className="data-[state=checked]:bg-[#EA4335]" />
+                </div>
+              )}
             </div>
             <Button onClick={handleSaveHabit} className="w-full bg-[#0A84FF] text-white hover:bg-[#007AFF] font-bold rounded-[12px] h-12 text-base">
               {isEditing ? "Save Changes" : "Create Habit"}
