@@ -1,9 +1,14 @@
-// Change the default from "http://localhost:4000" to "" (empty string)
-// This ensures requests go to the same domain where the site is hosted.
+// client/src/apiClient.ts
+
+// CORRECT SETTING FOR RENDER DEPLOYMENT:
+// We use an empty string "" so it uses the current domain (https://phonetodolist-1.onrender.com)
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 export async function apiPost(path: string, body: any, token?: string) {
-  const res = await fetch(`${API_BASE}${path}`, {
+  // Ensure we don't have double slashes if path starts with /
+  const url = `${API_BASE}${path}`;
+  
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -16,7 +21,9 @@ export async function apiPost(path: string, body: any, token?: string) {
 }
 
 export async function apiGet(path: string, token?: string) {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${path}`;
+  
+  const res = await fetch(url, {
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
