@@ -51,6 +51,7 @@ export default function Profile() {
       if (user?.id) {
         const token = localStorage.getItem("token") || undefined;
         apiPost("/api/auth/login", { email: user.email, password: "check" }, token)
+          .then(res => res.json())
           .then(data => {
             if (data.isGoogleCalendarConnected) {
               // Refresh the page to show updated status

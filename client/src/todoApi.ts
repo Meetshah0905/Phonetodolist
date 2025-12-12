@@ -2,7 +2,7 @@ import { apiGet, apiPost } from "./apiClient";
 
 export async function getTodos(token: string) {
   const res = await apiGet("/api/todos", token);
-  return res;
+  return res.json();
 }
 
 export async function addTodo(
@@ -10,6 +10,6 @@ export async function addTodo(
   todo: { title: string; description?: string; dueDate?: string },
 ) {
   const res = await apiPost("/api/todos", todo, token);
-  return res;
+  return res.json();
 }
 

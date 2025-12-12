@@ -9,7 +9,8 @@ import { Mic, StopCircle, ExternalLink, Check, Bell, Calendar, Volume2, Pencil, 
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { format, subDays, isSameDay } from "date-fns";
-import { apiGet, apiPost, API_BASE_URL } from "@/apiClient";
+import { apiGet, apiPost } from "@/apiClient";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
 
 export default function Journal() {
   const { saveJournalEntry, journalEntries, user, isGoogleCalendarConnected } = useGame();
@@ -44,6 +45,7 @@ export default function Journal() {
     if (user?.id) {
       const token = localStorage.getItem("token") || undefined;
       apiGet(`/api/journal/reminder?userId=${user.id}`, token)
+        .then(res => res.json())
         .then(data => {
           if (data.settings) {
             setReminderEnabled(data.settings.enabled);
@@ -55,6 +57,7 @@ export default function Journal() {
       
       // Load journal entries
       apiGet(`/api/journal/entries?userId=${user.id}`, token)
+        .then(res => res.json())
         .then(data => {
           if (data.entries) {
             setBackendEntries(data.entries);
@@ -100,7 +103,7 @@ export default function Journal() {
 
     try {
       const token = localStorage.getItem("token") || undefined;
-      await apiPost(
+      const res = await apiPost(
         "/api/journal/reminder",
         {
           userId: user.id,
@@ -110,6 +113,7 @@ export default function Journal() {
         },
         token,
       );
+      if (!res.ok) throw new Error("Failed to update reminder");
 
       toast({ 
         title: "Reminder Updated", 
@@ -130,7 +134,8 @@ export default function Journal() {
 
     try {
       const token = localStorage.getItem("token") || undefined;
-      await apiPost("/api/journal/delete", { userId: user.id, entryId }, token);
+      const res = await apiPost("/api/journal/delete", { userId: user.id, entryId }, token);
+      if (!res.ok) throw new Error("Failed to delete entry");
 
       setBackendEntries(prev => prev.filter(e => e.id !== entryId));
       toast({ 
@@ -152,7 +157,8 @@ export default function Journal() {
 
     try {
       const token = localStorage.getItem("token") || undefined;
-      await apiPost("/api/journal/update", { userId: user.id, entryId, text: editText }, token);
+      const res = await apiPost("/api/journal/update", { userId: user.id, entryId, text: editText }, token);
+      if (!res.ok) throw new Error("Failed to update entry");
 
       setBackendEntries(prev => prev.map(e => 
         e.id === entryId ? { ...e, text: editText } : e
@@ -230,7 +236,7 @@ export default function Journal() {
       // Save to backend with audio
       if (user?.id) {
         const token = localStorage.getItem("token") || undefined;
-        await apiPost(
+        const res = await apiPost(
           "/api/journal/save",
           {
             userId: user.id,
@@ -239,6 +245,7 @@ export default function Journal() {
           },
           token,
         );
+        if (!res.ok) throw new Error("Failed to save entry");
       }
 
       await saveJournalEntry(entry || "[Audio Note]");
@@ -256,6 +263,7 @@ export default function Journal() {
       if (user?.id) {
         const token = localStorage.getItem("token") || undefined;
         apiGet(`/api/journal/entries?userId=${user.id}`, token)
+          .then(res => res.json())
           .then(data => {
             if (data.entries) {
               setBackendEntries(data.entries);

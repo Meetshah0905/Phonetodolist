@@ -23,7 +23,7 @@ export default function Signup() {
     setIsLoading(true);
 
     try {
-      const res = await signupRequest(email, password, name);
+      const res = await signupRequest(name, email, password);
       if (!res.success) {
         throw new Error("Signup failed");
       }

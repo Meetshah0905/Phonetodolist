@@ -203,7 +203,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const hydrateFromServer = async (userId: string) => {
     try {
       isHydratingRef.current = true;
-      const data = await apiGet(`/api/state?userId=${userId}`, getToken());
+      const res = await apiGet(`/api/state?userId=${userId}`, getToken());
+      if (!res.ok) throw new Error("Failed to load state");
+      const data = await res.json();
       setPoints(data.points ?? 0);
       setLifetimeXP(data.lifetimeXP ?? 0);
       setTasks((data.tasks as Task[]) ?? INITIAL_TASKS);
@@ -235,7 +237,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           wishlist,
         },
         getToken(),
-      ).catch((err) => console.error("Persist state failed", err));
+      )
+        .then((res) => {
+          if (!res.ok) throw new Error(`Persist state failed ${res.status}`);
+        })
+        .catch((err) => console.error("Persist state failed", err));
     }, 500);
   };
 
@@ -266,6 +272,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     if (!user?.email || !user?.id) return;
 
     apiPost("/api/auth/login", { email: user.email, password: "check-status" }, getToken())
+      .then(res => res.json())
       .then(data => {
         if (data.isGoogleCalendarConnected !== undefined) {
           setIsGoogleCalendarConnected(data.isGoogleCalendarConnected);
@@ -283,9 +290,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const data = await apiGet(`/api/auth/google/connect?userId=${user.id}`, getToken());
-      
-      if (data?.error) {
+      const res = await apiGet(`/api/auth/google/connect?userId=${user.id}`, getToken());
+      const data = await res.json();
+      if (!res.ok || data?.error) {
         toast({ 
           title: "Setup Required", 
           description: data.message || "Google Calendar needs to be configured. Check GOOGLE_CALENDAR_SETUP.md", 
@@ -307,7 +314,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     if (!user?.id) return;
 
     try {
-      await apiPost("/api/auth/google/disconnect", { userId: user.id }, getToken());
+      const res = await apiPost("/api/auth/google/disconnect", { userId: user.id }, getToken());
+      if (!res.ok) {
+        throw new Error("Disconnect failed");
+      }
       
       setIsGoogleCalendarConnected(false);
       toast({ title: "Disconnected", description: "Google Calendar has been unlinked." });
@@ -323,7 +333,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
     
     try {
-      await apiPost(
+      const res = await apiPost(
         "/api/calendar/sync",
         {
           userId: user.id,
@@ -336,6 +346,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         },
         getToken(),
       );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.details || err.message || "Failed to sync");
+      }
 
       const itemType = item.type === "task" ? "Google Task" : "Google Calendar";
       toast({ 
@@ -360,6 +374,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     // Check if Google Calendar is connected for this user
     if (id) {
       apiPost("/api/auth/login", { email, password: "check-status" }, getToken())
+        .then(res => res.json())
         .then(data => {
           if (data.isGoogleCalendarConnected !== undefined) {
             setIsGoogleCalendarConnected(data.isGoogleCalendarConnected);
