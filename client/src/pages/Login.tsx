@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGame } from "@/lib/store";
+import { login as loginRequest } from "@/authApi";
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
@@ -21,22 +22,13 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:4000/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.message || "Login failed");
+      const data = await loginRequest(email, password);
+      if (!data.success) {
+        throw new Error("Login failed");
       }
 
-      const data = await response.json();
-
-      login(data.email || email, "Agent", data.id);
+      localStorage.setItem("token", data.token);
+      login(data.user.email || email, data.user.displayName || "Agent", data.user.id);
       
       // Set calendar connection status if provided
       if (data.isGoogleCalendarConnected !== undefined) {

@@ -7,30 +7,43 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGame } from "@/lib/store";
+import { signup as signupRequest } from "@/authApi";
 
 export default function Signup() {
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { login } = useGame();
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      // Mock login after signup
-      login(email, name);
+
+    try {
+      const res = await signupRequest(email, password, name);
+      if (!res.success) {
+        throw new Error("Signup failed");
+      }
+
+      localStorage.setItem("token", res.token);
+      login(res.user.email || email, res.user.displayName || name || "Agent", res.user.id);
       toast({
         title: "Account created!",
         description: "Welcome to your new journey. You start with 0 points.",
       });
       setLocation("/");
-    }, 1500);
+    } catch (error: any) {
+      toast({
+        title: "Signup failed",
+        description: error?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -77,6 +90,8 @@ export default function Signup() {
               <Input 
                 id="password" 
                 type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required 
                 className="bg-[#2C2C2E] border-transparent text-white focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF]"
               />

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Trophy, Shield, Zap, Target, Star, LogOut, Calendar, Bell, ChevronRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { apiPost } from "@/apiClient";
 
 const RANKS = [
     { name: "Iron 1", min: 2000, color: "text-gray-400", bg: "from-gray-500/20" },
@@ -48,12 +49,8 @@ export default function Profile() {
       
       // Update connection status in store
       if (user?.id) {
-        fetch(`http://localhost:4000/api/auth/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: user.email, password: "check" }),
-        })
-          .then(res => res.json())
+        const token = localStorage.getItem("token") || undefined;
+        apiPost("/api/auth/login", { email: user.email, password: "check" }, token)
           .then(data => {
             if (data.isGoogleCalendarConnected) {
               // Refresh the page to show updated status

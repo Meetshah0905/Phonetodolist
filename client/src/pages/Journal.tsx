@@ -9,6 +9,7 @@ import { Mic, StopCircle, ExternalLink, Check, Bell, Calendar, Volume2, Pencil, 
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { format, subDays, isSameDay } from "date-fns";
+import { apiGet, apiPost, API_BASE_URL } from "@/apiClient";
 
 export default function Journal() {
   const { saveJournalEntry, journalEntries, user, isGoogleCalendarConnected } = useGame();
@@ -41,8 +42,8 @@ export default function Journal() {
   // Load reminder settings from backend
   useEffect(() => {
     if (user?.id) {
-      fetch(`http://localhost:4000/api/journal/reminder?userId=${user.id}`)
-        .then(res => res.json())
+      const token = localStorage.getItem("token") || undefined;
+      apiGet(`/api/journal/reminder?userId=${user.id}`, token)
         .then(data => {
           if (data.settings) {
             setReminderEnabled(data.settings.enabled);
@@ -53,8 +54,7 @@ export default function Journal() {
         .catch(err => console.error("Failed to load reminder settings", err));
       
       // Load journal entries
-      fetch(`http://localhost:4000/api/journal/entries?userId=${user.id}`)
-        .then(res => res.json())
+      apiGet(`/api/journal/entries?userId=${user.id}`, token)
         .then(data => {
           if (data.entries) {
             setBackendEntries(data.entries);
@@ -99,16 +99,17 @@ export default function Journal() {
     if (!user?.id) return;
 
     try {
-      await fetch("http://localhost:4000/api/journal/reminder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const token = localStorage.getItem("token") || undefined;
+      await apiPost(
+        "/api/journal/reminder",
+        {
           userId: user.id,
           enabled: reminderEnabled,
           time: reminderTime,
           syncToCalendar,
-        }),
-      });
+        },
+        token,
+      );
 
       toast({ 
         title: "Reminder Updated", 
@@ -128,11 +129,8 @@ export default function Journal() {
     if (!confirm("Are you sure you want to delete this journal entry?")) return;
 
     try {
-      await fetch(`http://localhost:4000/api/journal/delete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id, entryId }),
-      });
+      const token = localStorage.getItem("token") || undefined;
+      await apiPost("/api/journal/delete", { userId: user.id, entryId }, token);
 
       setBackendEntries(prev => prev.filter(e => e.id !== entryId));
       toast({ 
@@ -153,11 +151,8 @@ export default function Journal() {
     if (!user?.id || !editText) return;
 
     try {
-      await fetch(`http://localhost:4000/api/journal/update`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id, entryId, text: editText }),
-      });
+      const token = localStorage.getItem("token") || undefined;
+      await apiPost("/api/journal/update", { userId: user.id, entryId, text: editText }, token);
 
       setBackendEntries(prev => prev.map(e => 
         e.id === entryId ? { ...e, text: editText } : e
@@ -234,15 +229,16 @@ export default function Journal() {
 
       // Save to backend with audio
       if (user?.id) {
-        await fetch("http://localhost:4000/api/journal/save", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        const token = localStorage.getItem("token") || undefined;
+        await apiPost(
+          "/api/journal/save",
+          {
             userId: user.id,
             text: entry || "[Audio Note]", // Default text if only audio
             audioBase64,
-          }),
-        });
+          },
+          token,
+        );
       }
 
       await saveJournalEntry(entry || "[Audio Note]");
@@ -258,8 +254,8 @@ export default function Journal() {
       
       // Reload entries from backend
       if (user?.id) {
-        fetch(`http://localhost:4000/api/journal/entries?userId=${user.id}`)
-          .then(res => res.json())
+        const token = localStorage.getItem("token") || undefined;
+        apiGet(`/api/journal/entries?userId=${user.id}`, token)
           .then(data => {
             if (data.entries) {
               setBackendEntries(data.entries);
@@ -555,7 +551,7 @@ export default function Journal() {
                 <audio 
                   controls 
                   className="w-full h-10 mt-3"
-                  src={`http://localhost:4000/api/journal/audio/${user.id}/${entry.id}`}
+                  src={`${API_BASE_URL}/api/journal/audio/${user.id}/${entry.id}`}
                   style={{
                     filter: 'invert(1) hue-rotate(180deg)',
                     borderRadius: '8px',

@@ -61,6 +61,10 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get("/api/health", (_req, res) => {
+  res.json({ ok: true });
+});
+
 (async () => {
   await connectToDatabase();
   await registerRoutes(httpServer, app);
