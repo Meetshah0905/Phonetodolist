@@ -2,13 +2,11 @@
 
 // CORRECT SETTING FOR RENDER DEPLOYMENT:
 // We use an empty string "" so it uses the current domain (https://phonetodolist-1.onrender.com)
+// CHANGE THIS LINE:
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 export async function apiPost(path: string, body: any, token?: string) {
-  // Ensure we don't have double slashes if path starts with /
-  const url = `${API_BASE}${path}`;
-  
-  const res = await fetch(url, {
+  const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -21,9 +19,7 @@ export async function apiPost(path: string, body: any, token?: string) {
 }
 
 export async function apiGet(path: string, token?: string) {
-  const url = `${API_BASE}${path}`;
-  
-  const res = await fetch(url, {
+  const res = await fetch(`${API_BASE}${path}`, {
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

@@ -15,11 +15,18 @@ import { ProgressRing } from "@/components/ui/ProgressRing";
 import { CalendarModal } from "@/components/ui/CalendarModal";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import quotesRaw from "@assets/quotes.txt?raw";
+import { BarChart, Bar, ResponsiveContainer, Cell } from "recharts";
+import quotesRaw from "@/assets/quotes.txt?raw";
+import { apiGet } from "@/apiClient"; // Import apiGet
 
 export default function Home() {
-  const { tasks, toggleTask, addTask, updateTask, deleteTask, getAISuggestion, points, lifetimeXP, nextRankXP, isGoogleCalendarConnected, syncToGoogleCalendar } = useGame();
+  // Destructure setters to manually update state if needed
+  const { 
+    user, tasks, setTasks, setPoints, setHabits, setBooks, setWishlist, setLifetimeXP,
+    toggleTask, addTask, updateTask, deleteTask, getAISuggestion, 
+    points, lifetimeXP, nextRankXP, isGoogleCalendarConnected, syncToGoogleCalendar 
+  } = useGame();
+
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewDate, setViewDate] = useState(new Date());
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -40,11 +47,15 @@ export default function Home() {
   const [syncToCalendar, setSyncToCalendar] = useState(false);
   const [calendarItemType, setCalendarItemType] = useState<"task" | "event">("task");
 
-  // Level Logic - calculate level based on lifetimeXP, progress based on current rank
+  // --- FIX: FORCE DATA LOAD ON MOUNT ---
+ 
+  // -------------------------------------
+
+  // Level Logic
   const level = Math.max(1, Math.floor(lifetimeXP / 1000) + 1);
   const progressToNextLevel = nextRankXP > 0 ? Math.min(100, Math.round((lifetimeXP / nextRankXP) * 100)) : 0;
 
-  // Filter tasks for selected date
+  // Filter tasks
   const filteredTasks = tasks.filter(
     (t) => t.date === selectedDate.toISOString().split("T")[0]
   );
@@ -57,15 +68,8 @@ export default function Home() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
-  // Quotes ticker (rotate every few seconds)
-  const quotes = useMemo(
-    () =>
-      quotesRaw
-        .split("\n")
-        .map((q) => q.trim())
-        .filter(Boolean),
-    []
-  );
+  // Quotes ticker
+  const quotes = useMemo(() => quotesRaw.split("\n").map((q) => q.trim()).filter(Boolean), []);
   const [quoteIndex, setQuoteIndex] = useState(() => Math.floor(Math.random() * Math.max(quotes.length, 1)));
 
   useEffect(() => {
@@ -76,15 +80,10 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [quotes.length]);
 
-  // Mock Data for Bar Chart
+  // Mock Data
   const weeklyData = [
-    { day: "M", points: 450 },
-    { day: "T", points: 820 },
-    { day: "W", points: 300 },
-    { day: "T", points: 600 },
-    { day: "F", points: 950 },
-    { day: "S", points: 120 },
-    { day: "S", points: 50 },
+    { day: "M", points: 450 }, { day: "T", points: 820 }, { day: "W", points: 300 },
+    { day: "T", points: 600 }, { day: "F", points: 950 }, { day: "S", points: 120 }, { day: "S", points: 50 },
   ];
   const currentDayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
 
@@ -129,61 +128,38 @@ export default function Home() {
 
   const handleSaveTask = () => {
     if (!taskTitle) return;
-    
     const finalPoints = parseInt(taskPoints) || aiSuggestion || 100;
 
     if (isEditing && editingId) {
         updateTask(editingId, {
-            title: taskTitle,
-            time: taskTime || "30m",
-            points: finalPoints,
-            notes: taskNotes
+            title: taskTitle, time: taskTime || "30m", points: finalPoints, notes: taskNotes
         });
     } else {
         addTask({
-            title: taskTitle,
-            time: taskTime || "30m",
-            points: finalPoints,
-            date: selectedDate.toISOString().split("T")[0],
-            priority: "medium",
-            notes: taskNotes
+            title: taskTitle, time: taskTime || "30m", points: finalPoints,
+            date: selectedDate.toISOString().split("T")[0], priority: "medium", notes: taskNotes
         });
     }
 
     if (syncToCalendar && isGoogleCalendarConnected) {
-        console.log("Syncing to calendar:", {
-            title: taskTitle,
-            time: taskScheduledTime || taskTime,
-            endTime: taskEndTime,
-            date: selectedDate.toISOString().split("T")[0],
-            type: calendarItemType,
-            notes: taskNotes
-        });
         syncToGoogleCalendar({
-            title: taskTitle,
-            time: taskScheduledTime || taskTime,
-            endTime: taskEndTime,
-            date: selectedDate.toISOString().split("T")[0],
-            type: calendarItemType,
-            notes: taskNotes
+            title: taskTitle, time: taskScheduledTime || taskTime, endTime: taskEndTime,
+            date: selectedDate.toISOString().split("T")[0], type: calendarItemType, notes: taskNotes
         });
     }
-    
     setIsDialogOpen(false);
   };
 
   const handleDeleteTask = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm("Are you sure you want to delete this task?")) {
-        deleteTask(id);
-    }
+    if (confirm("Delete task?")) deleteTask(id);
   };
 
-  const dayOffsets = [-3, -2, -1, 0, 1, 2, 3]; // Expanded range
+  const dayOffsets = [-3, -2, -1, 0, 1, 2, 3];
 
   return (
     <MobileShell>
-      {/* Header Section */}
+      {/* Header */}
       <div className="flex justify-between items-end mb-8 pt-4">
         <div>
             <div className="flex items-center gap-2 mb-1">
@@ -192,13 +168,11 @@ export default function Home() {
                  </span>
             </div>
             {quotes.length > 0 && (
-              <div className="text-xs text-[#8E8E93] bg-white/5 border border-white/5 rounded-lg px-3 py-2 mb-2 max-w-xs leading-snug transition-opacity duration-500">
+              <div className="text-xs text-[#8E8E93] bg-white/5 border border-white/5 rounded-lg px-3 py-2 mb-2 max-w-xs leading-snug">
                 “{quotes[quoteIndex]}”
               </div>
             )}
-            <h1 className="text-3xl font-bold text-white tracking-tight">
-                {greeting}, User
-            </h1>
+            <h1 className="text-3xl font-bold text-white tracking-tight">{greeting}, {user?.name || 'User'}</h1>
             <div className="flex items-center gap-2 mt-2">
                 <div className="bg-[#1C1C1E] px-3 py-1 rounded-full border border-white/10 flex items-center gap-2">
                     <span className="text-[10px] font-bold text-[#8E8E93] uppercase">Lvl {level}</span>
@@ -215,364 +189,89 @@ export default function Home() {
         <GlowingBalance />
       </div>
 
-      {/* Date Navigator Strip */}
+      {/* Date Navigator */}
       <div className="flex items-center gap-2 mb-6">
-        <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setViewDate(addDays(viewDate, -3))} 
-            className="text-[#8E8E93] hover:text-white shrink-0 hover:bg-white/10 rounded-full"
-        >
-             <ChevronLeft />
-        </Button>
-        
+        <Button variant="ghost" size="icon" onClick={() => setViewDate(addDays(viewDate, -3))} className="text-[#8E8E93] hover:text-white shrink-0 hover:bg-white/10 rounded-full"><ChevronLeft /></Button>
         <div className="overflow-x-auto pb-2 scrollbar-hide flex-1">
             <div className="flex gap-2 min-w-max px-1 justify-center">
                 {dayOffsets.map((offset) => {
                     const date = addDays(viewDate, offset);
                     const isSelected = selectedDate.toDateString() === date.toDateString();
                     const isToday = new Date().toDateString() === date.toDateString();
-                    
                     return (
-                        <button
-                            key={offset}
-                            onClick={() => setSelectedDate(date)}
-                            className={cn(
-                                "flex flex-col items-center justify-center w-[60px] h-[64px] rounded-[16px] transition-all border",
-                                isSelected 
-                                    ? "bg-[#0A84FF] border-[#0A84FF] text-white shadow-lg shadow-blue-500/20 scale-105" 
-                                    : "bg-[#1C1C1E] border-white/5 text-[#8E8E93] hover:bg-[#2C2C2E]"
+                        <button key={offset} onClick={() => setSelectedDate(date)}
+                            className={cn("flex flex-col items-center justify-center w-[60px] h-[64px] rounded-[16px] transition-all border",
+                                isSelected ? "bg-[#0A84FF] border-[#0A84FF] text-white shadow-lg shadow-blue-500/20 scale-105" : "bg-[#1C1C1E] border-white/5 text-[#8E8E93] hover:bg-[#2C2C2E]"
                             )}
                         >
                             <span className="text-[10px] font-bold uppercase mb-0.5">{format(date, "EEE")}</span>
-                            <span className={cn("text-lg font-bold", isSelected ? "text-white" : "text-white/80")}>
-                                {format(date, "d")}
-                            </span>
+                            <span className={cn("text-lg font-bold", isSelected ? "text-white" : "text-white/80")}>{format(date, "d")}</span>
                             {isToday && <div className="w-1 h-1 rounded-full bg-[#0A84FF] mt-1" />}
                         </button>
                     );
                 })}
             </div>
         </div>
-
-        <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setViewDate(addDays(viewDate, 3))} 
-            className="text-[#8E8E93] hover:text-white shrink-0 hover:bg-white/10 rounded-full"
-        >
-             <ChevronRight />
-        </Button>
+        <Button variant="ghost" size="icon" onClick={() => setViewDate(addDays(viewDate, 3))} className="text-[#8E8E93] hover:text-white shrink-0 hover:bg-white/10 rounded-full"><ChevronRight /></Button>
       </div>
 
-      {/* Stats & Weekly Activity */}
+      {/* Stats */}
       <div className="grid grid-cols-2 gap-4 mb-8">
-        {/* Daily Goal Ring */}
         <LiquidCard className="flex flex-col items-center justify-center py-4 bg-[#1C1C1E] border-white/10 relative overflow-hidden">
              <div className="absolute top-3 left-3 flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-[#0A84FF] animate-pulse" />
                 <span className="text-[10px] font-bold text-[#8E8E93] uppercase">Daily Goal</span>
              </div>
-             <div className="mt-4">
-                <ProgressRing 
-                    completed={completedCount} 
-                    total={totalCount} 
-                    size={100} 
-                    label="" 
-                    color="#0A84FF"
-                />
-            </div>
+             <div className="mt-4"><ProgressRing completed={completedCount} total={totalCount} size={100} label="" color="#0A84FF" /></div>
         </LiquidCard>
-
-        {/* Weekly Bar Graph */}
         <LiquidCard className="flex flex-col justify-end p-4 bg-[#1C1C1E] border-white/10">
-            <div className="flex justify-between items-start mb-2">
-                <span className="text-[10px] font-bold text-[#8E8E93] uppercase">Weekly Focus</span>
-                <TrendingUp size={14} className="text-[#30D158]" />
-            </div>
+            <div className="flex justify-between items-start mb-2"><span className="text-[10px] font-bold text-[#8E8E93] uppercase">Weekly Focus</span><TrendingUp size={14} className="text-[#30D158]" /></div>
             <div className="h-[80px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={weeklyData}>
-                        <Bar dataKey="points" radius={[4, 4, 4, 4]}>
-                            {weeklyData.map((entry, index) => (
-                                <Cell 
-                                    key={`cell-${index}`} 
-                                    fill={index === currentDayIndex ? "#0A84FF" : "#2C2C2E"} 
-                                />
-                            ))}
-                        </Bar>
-                    </BarChart>
+                    <BarChart data={weeklyData}><Bar dataKey="points" radius={[4, 4, 4, 4]}>{weeklyData.map((entry, index) => (<Cell key={`cell-${index}`} fill={index === currentDayIndex ? "#0A84FF" : "#2C2C2E"} />))}</Bar></BarChart>
                 </ResponsiveContainer>
             </div>
-            <div className="flex justify-between mt-2 px-1">
-                 {weeklyData.map((d, i) => (
-                    <span key={i} className={cn("text-[8px] font-bold uppercase", i === currentDayIndex ? "text-white" : "text-[#505055]")}>{d.day}</span>
-                 ))}
-            </div>
+            <div className="flex justify-between mt-2 px-1">{weeklyData.map((d, i) => (<span key={i} className={cn("text-[8px] font-bold uppercase", i === currentDayIndex ? "text-white" : "text-[#505055]")}>{d.day}</span>))}</div>
         </LiquidCard>
       </div>
-
-      <CalendarModal 
-        open={isCalendarOpen} 
-        onOpenChange={setIsCalendarOpen} 
-        selectedDate={selectedDate} 
-        onSelectDate={setSelectedDate} 
-      />
+      <CalendarModal open={isCalendarOpen} onOpenChange={setIsCalendarOpen} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
       
-      {/* Task List Header */}
+      {/* Tasks */}
       <div className="flex justify-between items-center mb-4 px-1">
-        <h2 className="text-lg font-bold text-white tracking-tight">
-            Tasks
-        </h2>
-        
+        <h2 className="text-lg font-bold text-white tracking-tight">Tasks</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleOpenAdd} size="sm" className="bg-[#1C1C1E] text-[#0A84FF] hover:bg-[#2C2C2E] rounded-full h-8 px-4 font-semibold text-xs border border-[#0A84FF]/30">
-              <Plus size={14} className="mr-1" /> Add Task
-            </Button>
-          </DialogTrigger>
+          <DialogTrigger asChild><Button onClick={handleOpenAdd} size="sm" className="bg-[#1C1C1E] text-[#0A84FF] hover:bg-[#2C2C2E] rounded-full h-8 px-4 font-semibold text-xs border border-[#0A84FF]/30"><Plus size={14} className="mr-1" /> Add Task</Button></DialogTrigger>
           <DialogContent className="bg-[#1C1C1E] border-white/10 text-white sm:max-w-[520px] rounded-[24px] shadow-2xl p-6">
-            <DialogHeader className="pb-2">
-              <DialogTitle className="font-bold text-white text-2xl">{isEditing ? "Edit Task" : "New Task"}</DialogTitle>
-            </DialogHeader>
+            <DialogHeader className="pb-2"><DialogTitle className="font-bold text-white text-2xl">{isEditing ? "Edit Task" : "New Task"}</DialogTitle></DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="title" className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">Title</Label>
-                <div className="relative">
-                    <Input
-                    id="title"
-                    value={taskTitle}
-                    onChange={(e) => setTaskTitle(e.target.value)}
-                    className="bg-[#2C2C2E] border-transparent text-white focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] pr-16 rounded-[12px] h-12"
-                    placeholder="e.g. Finish Project Report"
-                    />
-                    <div className="absolute right-2 top-2">
-                        <Button 
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 rounded-full p-0 text-[#0A84FF] hover:bg-[#0A84FF]/10"
-                            onClick={handleGeneratePoints}
-                            disabled={isAnalyzing || taskTitle.length < 3}
-                        >
-                            {isAnalyzing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                        </Button>
-                    </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="time" className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">Duration</Label>
-                  <Input
-                    id="time"
-                    value={taskTime}
-                    onChange={(e) => setTaskTime(e.target.value)}
-                    className="bg-[#2C2C2E] border-transparent text-white focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] rounded-[12px] h-12"
-                    placeholder="e.g. 30m"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="scheduledTime" className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">Scheduled Time</Label>
-                  <Input
-                    id="scheduledTime"
-                    type="time"
-                    value={taskScheduledTime}
-                    onChange={(e) => setTaskScheduledTime(e.target.value)}
-                    className="bg-[#2C2C2E] border-transparent text-white focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] rounded-[12px] h-12"
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="points" className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">Points (XP)</Label>
-                <div className="relative">
-                    <Input
-                        id="points"
-                        type="number"
-                        value={taskPoints}
-                        onChange={(e) => {
-                            setTaskPoints(e.target.value);
-                            setAiSuggestion(null);
-                        }}
-                        className="bg-[#2C2C2E] border-transparent text-white focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] rounded-[12px] h-12"
-                        placeholder="100"
-                    />
-                    {aiSuggestion && (
-                        <div className="absolute right-3 top-3.5 pointer-events-none">
-                            <span className="text-[10px] text-[#30D158] font-bold bg-[#30D158]/10 px-1.5 py-0.5 rounded flex items-center gap-1">
-                                AI Suggested
-                            </span>
-                        </div>
-                    )}
-                  </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="notes" className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">Notes (Optional)</Label>
-                <Textarea
-                  id="notes"
-                  value={taskNotes}
-                  onChange={(e) => setTaskNotes(e.target.value)}
-                  className="bg-[#2C2C2E] border-transparent text-white focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] rounded-[12px] min-h-[80px]"
-                  placeholder="Details..."
-                />
-              </div>
-
+              <div className="grid gap-2"><Label htmlFor="title" className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">Title</Label><div className="relative"><Input id="title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} className="bg-[#2C2C2E] border-transparent text-white focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] pr-16 rounded-[12px] h-12" placeholder="Task name" /><div className="absolute right-2 top-2"><Button size="sm" variant="ghost" className="h-8 w-8 rounded-full p-0 text-[#0A84FF]" onClick={handleGeneratePoints} disabled={isAnalyzing || taskTitle.length < 3}>{isAnalyzing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}</Button></div></div></div>
+              <div className="grid grid-cols-2 gap-4"><div className="grid gap-2"><Label htmlFor="time">Duration</Label><Input id="time" value={taskTime} onChange={(e) => setTaskTime(e.target.value)} className="bg-[#2C2C2E] border-transparent text-white rounded-[12px] h-12" placeholder="30m" /></div><div className="grid gap-2"><Label htmlFor="scheduledTime">Scheduled</Label><Input id="scheduledTime" type="time" value={taskScheduledTime} onChange={(e) => setTaskScheduledTime(e.target.value)} className="bg-[#2C2C2E] border-transparent text-white rounded-[12px] h-12" /></div></div>
+              <div className="grid gap-2"><Label htmlFor="points">Points (XP)</Label><Input id="points" type="number" value={taskPoints} onChange={(e) => { setTaskPoints(e.target.value); setAiSuggestion(null); }} className="bg-[#2C2C2E] border-transparent text-white rounded-[12px] h-12" placeholder="100" /></div>
+              <div className="grid gap-2"><Label htmlFor="notes">Notes</Label><Textarea id="notes" value={taskNotes} onChange={(e) => setTaskNotes(e.target.value)} className="bg-[#2C2C2E] border-transparent text-white rounded-[12px]" placeholder="Details..." /></div>
               {isGoogleCalendarConnected && (
-                <>
-                  <div className="flex items-center justify-between py-2 px-1">
-                      <div className="flex items-center gap-2">
-                          <CalendarIcon size={16} className="text-[#EA4335]" />
-                          <Label htmlFor="gcal" className="text-white font-medium cursor-pointer">Add to Google Calendar</Label>
-                      </div>
-                      <Switch id="gcal" checked={syncToCalendar} onCheckedChange={setSyncToCalendar} className="data-[state=checked]:bg-[#EA4335]" />
-                  </div>
-                  
-                  {syncToCalendar && (
-                    <div className="space-y-3 bg-[#2C2C2E] rounded-[12px] p-3 border border-white/5">
-                      <div className="grid gap-2">
-                        <Label className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">Calendar Item Type</Label>
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant={calendarItemType === "task" ? "default" : "outline"}
-                            className={cn(
-                              "flex-1 h-10 rounded-[8px]",
-                              calendarItemType === "task" 
-                                ? "bg-[#0A84FF] text-white hover:bg-[#007AFF]" 
-                                : "bg-[#1C1C1E] text-[#8E8E93] border-white/10 hover:bg-[#2C2C2E]"
-                            )}
-                            onClick={() => setCalendarItemType("task")}
-                          >
-                            Task
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={calendarItemType === "event" ? "default" : "outline"}
-                            className={cn(
-                              "flex-1 h-10 rounded-[8px]",
-                              calendarItemType === "event" 
-                                ? "bg-[#0A84FF] text-white hover:bg-[#007AFF]" 
-                                : "bg-[#1C1C1E] text-[#8E8E93] border-white/10 hover:bg-[#2C2C2E]"
-                            )}
-                            onClick={() => setCalendarItemType("event")}
-                          >
-                            Event
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      {calendarItemType === "event" && (
-                        <div className="grid gap-2">
-                          <Label htmlFor="endTime" className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">End Time</Label>
-                          <Input
-                            id="endTime"
-                            type="time"
-                            value={taskEndTime}
-                            onChange={(e) => setTaskEndTime(e.target.value)}
-                            className="bg-[#1C1C1E] border-transparent text-white focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] rounded-[8px] h-10"
-                            placeholder="End time"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
+                <div className="space-y-3 bg-[#2C2C2E] rounded-[12px] p-3 border border-white/5">
+                    <div className="flex items-center justify-between"><div className="flex items-center gap-2"><CalendarIcon size={16} className="text-[#EA4335]" /><Label htmlFor="gcal" className="text-white cursor-pointer">Add to Google Calendar</Label></div><Switch id="gcal" checked={syncToCalendar} onCheckedChange={setSyncToCalendar} className="data-[state=checked]:bg-[#EA4335]" /></div>
+                </div>
               )}
             </div>
-            <Button onClick={handleSaveTask} className="w-full bg-[#0A84FF] text-white hover:bg-[#007AFF] font-bold rounded-[12px] h-12 text-base">
-              {isEditing ? "Save Changes" : "Create Task"}
-            </Button>
+            <Button onClick={handleSaveTask} className="w-full bg-[#0A84FF] text-white hover:bg-[#007AFF] font-bold rounded-[12px] h-12 text-base">{isEditing ? "Save" : "Create"}</Button>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Task List */}
-      <div className={cn(
-        "space-y-3 pb-24 transition-all duration-500 rounded-[24px]",
-        allTasksCompleted ? "p-6 bg-gradient-to-b from-[#0A84FF]/10 to-transparent border border-[#0A84FF]/20 shadow-[0_0_50px_-10px_rgba(10,132,255,0.3)]" : ""
-      )}>
+      <div className={cn("space-y-3 pb-24 transition-all duration-500 rounded-[24px]", allTasksCompleted ? "p-6 bg-gradient-to-b from-[#0A84FF]/10 to-transparent border border-[#0A84FF]/20" : "")}>
         <AnimatePresence>
-          {allTasksCompleted && (
-            <motion.div 
-                key="all-complete"
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="mb-6 text-center"
-            >
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#30D158]/20 text-[#30D158] mb-2 shadow-[0_0_20px_rgba(48,209,88,0.4)]">
-                    <Check size={24} strokeWidth={3} />
-                </div>
-                <h3 className="text-xl font-bold text-white">All Tasks Complete!</h3>
-                <p className="text-[#8E8E93] text-sm">Great job crushing your goals today.</p>
-            </motion.div>
-          )}
+          {allTasksCompleted && (<motion.div key="all-complete" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mb-6 text-center"><div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#30D158]/20 text-[#30D158] mb-2"><Check size={24} strokeWidth={3} /></div><h3 className="text-xl font-bold text-white">All Tasks Complete!</h3></motion.div>)}
         </AnimatePresence>
-
         <AnimatePresence>
         {filteredTasks.map((task) => (
-          <LiquidCard
-            as={motion.div}
-            layout
-            key={task.id}
-            className={cn(
-                "flex items-center gap-4 p-4 transition-all group",
-                task.completed ? "opacity-60" : ""
-            )}
-            onClick={() => toggleTask(task.id)}
-          >
-            {/* Checkbox with Starburst */}
-            <div className={cn(
-              "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 shrink-0 relative",
-              task.completed ? "bg-[#0A84FF] border-[#0A84FF] animate-starburst" : "border-[#8E8E93] group-hover:border-[#0A84FF]"
-            )}>
-              {task.completed && <Check size={14} className="text-white font-bold" />}
-            </div>
-            
-            <div className="flex-1 min-w-0">
-              <h3 className={cn(
-                "text-base font-semibold transition-colors truncate",
-                task.completed ? "text-[#8E8E93] line-through" : "text-white"
-              )}>
-                {task.title}
-              </h3>
-              <div className="flex items-center gap-3 mt-1">
-                 <span className="text-xs text-[#8E8E93] font-medium flex items-center gap-1">
-                  <Clock size={12} /> {task.time}
-                </span>
-                <span className="bg-[#0A84FF]/10 text-[#0A84FF] px-2 py-0.5 rounded-[6px] text-[10px] font-bold whitespace-nowrap border border-[#0A84FF]/20">
-                    {task.points} PTS
-                </span>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8 text-[#8E8E93] hover:text-white hover:bg-white/10"
-                    onClick={(e) => { e.stopPropagation(); handleOpenEdit(task); }}
-                >
-                    <Pencil size={16} />
-                </Button>
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8 text-[#8E8E93] hover:text-[#FF453A] hover:bg-[#FF453A]/10"
-                    onClick={(e) => handleDeleteTask(task.id, e)}
-                >
-                    <Trash2 size={16} />
-                </Button>
-            </div>
+          <LiquidCard as={motion.div} layout key={task.id} className={cn("flex items-center gap-4 p-4 transition-all group", task.completed ? "opacity-60" : "")} onClick={() => toggleTask(task.id)}>
+            <div className={cn("w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 relative", task.completed ? "bg-[#0A84FF] border-[#0A84FF]" : "border-[#8E8E93] group-hover:border-[#0A84FF]")}>{task.completed && <Check size={14} className="text-white font-bold" />}</div>
+            <div className="flex-1 min-w-0"><h3 className={cn("text-base font-semibold truncate", task.completed ? "text-[#8E8E93] line-through" : "text-white")}>{task.title}</h3><div className="flex items-center gap-3 mt-1"><span className="text-xs text-[#8E8E93] font-medium flex items-center gap-1"><Clock size={12} /> {task.time}</span><span className="bg-[#0A84FF]/10 text-[#0A84FF] px-2 py-0.5 rounded-[6px] text-[10px] font-bold border border-[#0A84FF]/20">{task.points} PTS</span></div></div>
+            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}><Button variant="ghost" size="icon" className="h-8 w-8 text-[#8E8E93] hover:text-white" onClick={(e) => { e.stopPropagation(); handleOpenEdit(task); }}><Pencil size={16} /></Button><Button variant="ghost" size="icon" className="h-8 w-8 text-[#8E8E93] hover:text-[#FF453A]" onClick={(e) => handleDeleteTask(task.id, e)}><Trash2 size={16} /></Button></div>
           </LiquidCard>
         ))}
         </AnimatePresence>
-        
-        {filteredTasks.length === 0 && (
-          <div className="text-center py-20 opacity-50">
-            <p className="text-[#8E8E93] text-sm">No tasks scheduled.</p>
-          </div>
-        )}
       </div>
     </MobileShell>
   );

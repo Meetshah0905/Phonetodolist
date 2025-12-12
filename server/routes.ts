@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import mongoose from "mongoose";
 import { User } from "./models/User";
-import { getAuthUrl, getTokensFromCode, createCalendarEvent, createGoogleTask, isConfigured, getUserProfile } from "./googleCalendar";
+import { getAuthUrl, getTokensFromCode, createCalendarEvent, createGoogleTask, createCalendarReminder, isConfigured, getUserProfile } from "./googleCalendar";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -14,11 +14,10 @@ export async function registerRoutes(
     res.json({ mongoConnected: state === 1, state });
   });
 
-  // --- FIXED SIGNUP ROUTE ---
+  // --- SIGNUP ROUTE (This was missing) ---
   app.post("/api/auth/signup", async (req, res) => {
-    // Read 'fullName' (sent by client) or 'name'
     const { email, password, name, fullName } = req.body ?? {};
-    
+
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required" });
     }
@@ -35,14 +34,14 @@ export async function registerRoutes(
         name: name || fullName || email.split('@')[0] 
       });
 
-      // RETURN THE STRUCTURE THE CLIENT EXPECTS
+      // Send response in format expected by frontend
       res.json({
         success: true,
-        token: "mock-token-" + user._id, // Placeholder token to allow login
+        token: "mock-token-" + user._id,
         user: {
           id: user._id,
           email: user.email,
-          displayName: user.name,
+          name: user.name,
           isGoogleCalendarConnected: false,
         }
       });
@@ -52,7 +51,7 @@ export async function registerRoutes(
     }
   });
 
-  // --- FIXED LOGIN ROUTE ---
+  // --- LOGIN ROUTE (Updated to match frontend) ---
   app.post("/api/auth/login", async (req, res) => {
     const { email, password } = req.body ?? {};
 
@@ -61,21 +60,22 @@ export async function registerRoutes(
     }
 
     try {
-      const user = await User.findOne({ email }).exec();
+      let user = await User.findOne({ email }).exec();
 
-      // Simple password check (Note: In production, use bcrypt/hashing)
+      // Simple password check (In production use hashing)
       if (!user || user.password !== password) {
-         return res.status(401).json({ message: "Invalid email or password" });
+         // Create user if not exists for easier testing (Optional)
+         // user = await User.create({ email, password });
+         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      // RETURN THE STRUCTURE THE CLIENT EXPECTS
       res.json({
         success: true,
         token: "mock-token-" + user._id,
         user: {
           id: user._id,
           email: user.email,
-          displayName: user.name || user.email.split('@')[0],
+          name: user.name,
           isGoogleCalendarConnected: !!user.googleCalendarTokens?.access_token,
         }
       });
@@ -85,7 +85,7 @@ export async function registerRoutes(
     }
   });
 
-  // --- GOOGLE ROUTES (Relative Paths) ---
+  // --- GOOGLE AUTH ROUTES ---
   app.get("/api/auth/google/login", (req, res) => {
     if (!isConfigured()) return res.status(503).json({ message: "Google Auth not configured" });
     const authUrl = getAuthUrl();
@@ -133,16 +133,117 @@ export async function registerRoutes(
     }
   });
 
-  // ... (Keep the rest of your calendar/journal routes below unchanged) ...
-  
+  app.post("/api/auth/google/disconnect", async (req, res) => {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ message: "User ID required" });
+    try {
+      await User.findByIdAndUpdate(userId, { $unset: { googleCalendarTokens: "" } });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to disconnect" });
+    }
+  });
+
   app.post("/api/calendar/sync", async (req, res) => {
-    // ... (Keep existing code) ...
-    // Note: ensure you handle errors properly
-    res.status(501).json({message: "Not implemented in this snippet"}); 
+    const { userId, title, time, endTime, date, type, notes } = req.body;
+    if (!userId) return res.status(400).json({ message: "User ID required" });
+
+    try {
+      const user = await User.findById(userId);
+      if (!user?.googleCalendarTokens) return res.status(401).json({ message: "Google Calendar not connected" });
+
+      if (type === "task") {
+        let dueDateTime = new Date().toISOString();
+        if (date) dueDateTime = new Date(date).toISOString();
+        if (date && time) dueDateTime = new Date(`${date}T${time}:00`).toISOString();
+        
+        await createGoogleTask(user.googleCalendarTokens, { title, notes, due: dueDateTime });
+        res.json({ success: true });
+      } else {
+        const startDateTime = date && time ? new Date(`${date}T${time}:00`) : new Date();
+        const endDateTime = new Date(startDateTime);
+        endDateTime.setHours(endDateTime.getHours() + 1);
+
+        await createCalendarEvent(user.googleCalendarTokens, {
+          summary: title,
+          description: notes,
+          start: { dateTime: startDateTime.toISOString(), timeZone: "UTC" },
+          end: { dateTime: endDateTime.toISOString(), timeZone: "UTC" },
+        });
+        res.json({ success: true });
+      }
+    } catch (error) {
+      console.error("Calendar sync error", error);
+      res.status(500).json({ message: "Failed to sync to calendar" });
+    }
+  });
+
+  // --- DATA SAVING ROUTES ---
+  app.get("/api/state", async (req, res) => {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ message: "User ID required" });
+
+    try {
+      const user = await User.findById(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.json({
+        points: user.points ?? 0,
+        lifetimeXP: user.lifetimeXP ?? 0,
+        tasks: user.tasks ?? [],
+        habits: user.habits ?? [],
+        books: user.books ?? [],
+        wishlist: user.wishlist ?? [],
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to load state" });
+    }
+  });
+
+  app.post("/api/state", async (req, res) => {
+    const { userId, points, lifetimeXP, tasks, habits, books, wishlist } = req.body ?? {};
+    if (!userId) return res.status(400).json({ message: "User ID required" });
+
+    try {
+      const user = await User.findById(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      if (points !== undefined) user.points = points;
+      if (lifetimeXP !== undefined) user.lifetimeXP = lifetimeXP;
+      if (tasks !== undefined) user.tasks = tasks;
+      if (habits !== undefined) user.habits = habits;
+      if (books !== undefined) user.books = books;
+      if (wishlist !== undefined) user.wishlist = wishlist;
+
+      await user.save();
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to save state" });
+    }
+  });
+
+  app.post("/api/journal/save", async (req, res) => {
+    const { userId, text } = req.body;
+    if (!userId) return res.status(400).json({ message: "User ID required" });
+
+    try {
+      const user = await User.findById(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      if (!user.journalEntries) user.journalEntries = [];
+      user.journalEntries.push({
+        id: Math.random().toString(36).substr(2, 9),
+        text,
+        date: new Date(),
+      });
+      await user.save();
+
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to save journal entry" });
+    }
   });
   
-  // (Paste the rest of your routes for /api/state, /api/journal/* here from your previous file)
-  // Or simply replace the top half of your file with the code above.
+  // (Include other journal routes like 'update', 'delete' if needed similarly)
 
   return httpServer;
 }
