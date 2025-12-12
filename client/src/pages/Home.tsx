@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { GlowingBalance } from "@/components/ui/GlowingBalance";
 import { LiquidCard } from "@/components/ui/LiquidCard";
@@ -16,9 +16,10 @@ import { CalendarModal } from "@/components/ui/CalendarModal";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import quotesRaw from "@assets/quotes.txt?raw";
 
 export default function Home() {
-  const { tasks, toggleTask, addTask, updateTask, deleteTask, getAISuggestion, points, isGoogleCalendarConnected, syncToGoogleCalendar } = useGame();
+  const { tasks, toggleTask, addTask, updateTask, deleteTask, getAISuggestion, points, lifetimeXP, nextRankXP, isGoogleCalendarConnected, syncToGoogleCalendar } = useGame();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewDate, setViewDate] = useState(new Date());
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -30,15 +31,18 @@ export default function Home() {
   
   const [taskTitle, setTaskTitle] = useState("");
   const [taskTime, setTaskTime] = useState("");
+  const [taskScheduledTime, setTaskScheduledTime] = useState("");
+  const [taskEndTime, setTaskEndTime] = useState("");
   const [taskPoints, setTaskPoints] = useState<string>("");
   const [taskNotes, setTaskNotes] = useState("");
   const [aiSuggestion, setAiSuggestion] = useState<number | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [syncToCalendar, setSyncToCalendar] = useState(false);
+  const [calendarItemType, setCalendarItemType] = useState<"task" | "event">("task");
 
-  // Level Logic
-  const level = Math.floor(points / 1000) + 1;
-  const progressToNextLevel = (points % 1000) / 1000 * 100;
+  // Level Logic - calculate level based on lifetimeXP, progress based on current rank
+  const level = Math.max(1, Math.floor(lifetimeXP / 1000) + 1);
+  const progressToNextLevel = nextRankXP > 0 ? Math.min(100, Math.round((lifetimeXP / nextRankXP) * 100)) : 0;
 
   // Filter tasks for selected date
   const filteredTasks = tasks.filter(
@@ -52,6 +56,25 @@ export default function Home() {
   // Time-based Greeting
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+
+  // Quotes ticker (rotate every few seconds)
+  const quotes = useMemo(
+    () =>
+      quotesRaw
+        .split("\n")
+        .map((q) => q.trim())
+        .filter(Boolean),
+    []
+  );
+  const [quoteIndex, setQuoteIndex] = useState(() => Math.floor(Math.random() * Math.max(quotes.length, 1)));
+
+  useEffect(() => {
+    if (!quotes.length) return;
+    const interval = setInterval(() => {
+      setQuoteIndex((prev) => (prev + 1) % quotes.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [quotes.length]);
 
   // Mock Data for Bar Chart
   const weeklyData = [
@@ -79,9 +102,12 @@ export default function Home() {
     setIsEditing(false);
     setTaskTitle("");
     setTaskTime("");
+    setTaskScheduledTime("");
+    setTaskEndTime("");
     setTaskPoints("");
     setTaskNotes("");
     setSyncToCalendar(false);
+    setCalendarItemType("task");
     setAiSuggestion(null);
     setIsDialogOpen(true);
   };
@@ -91,9 +117,12 @@ export default function Home() {
     setEditingId(task.id);
     setTaskTitle(task.title);
     setTaskTime(task.time);
+    setTaskScheduledTime("");
+    setTaskEndTime("");
     setTaskPoints(task.points.toString());
     setTaskNotes(task.notes || "");
-    setSyncToCalendar(false); 
+    setSyncToCalendar(false);
+    setCalendarItemType("task");
     setAiSuggestion(task.points);
     setIsDialogOpen(true);
   };
@@ -122,10 +151,21 @@ export default function Home() {
     }
 
     if (syncToCalendar && isGoogleCalendarConnected) {
+        console.log("Syncing to calendar:", {
+            title: taskTitle,
+            time: taskScheduledTime || taskTime,
+            endTime: taskEndTime,
+            date: selectedDate.toISOString().split("T")[0],
+            type: calendarItemType,
+            notes: taskNotes
+        });
         syncToGoogleCalendar({
             title: taskTitle,
-            time: taskTime,
-            date: selectedDate.toISOString().split("T")[0]
+            time: taskScheduledTime || taskTime,
+            endTime: taskEndTime,
+            date: selectedDate.toISOString().split("T")[0],
+            type: calendarItemType,
+            notes: taskNotes
         });
     }
     
@@ -151,6 +191,11 @@ export default function Home() {
                     {format(selectedDate, "EEE, MMM do")}
                  </span>
             </div>
+            {quotes.length > 0 && (
+              <div className="text-xs text-[#8E8E93] bg-white/5 border border-white/5 rounded-lg px-3 py-2 mb-2 max-w-xs leading-snug transition-opacity duration-500">
+                “{quotes[quoteIndex]}”
+              </div>
+            )}
             <h1 className="text-3xl font-bold text-white tracking-tight">
                 {greeting}, User
             </h1>
@@ -286,9 +331,9 @@ export default function Home() {
               <Plus size={14} className="mr-1" /> Add Task
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-[#1C1C1E] border-white/10 text-white sm:max-w-[425px] rounded-[20px] shadow-2xl">
-            <DialogHeader>
-              <DialogTitle className="font-bold text-white text-xl">{isEditing ? "Edit Task" : "New Task"}</DialogTitle>
+          <DialogContent className="bg-[#1C1C1E] border-white/10 text-white sm:max-w-[520px] rounded-[24px] shadow-2xl p-6">
+            <DialogHeader className="pb-2">
+              <DialogTitle className="font-bold text-white text-2xl">{isEditing ? "Edit Task" : "New Task"}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
@@ -316,7 +361,7 @@ export default function Home() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="time" className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">Estimated Time</Label>
+                  <Label htmlFor="time" className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">Duration</Label>
                   <Input
                     id="time"
                     value={taskTime}
@@ -326,8 +371,19 @@ export default function Home() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="points" className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">Points (XP)</Label>
-                  <div className="relative">
+                  <Label htmlFor="scheduledTime" className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">Scheduled Time</Label>
+                  <Input
+                    id="scheduledTime"
+                    type="time"
+                    value={taskScheduledTime}
+                    onChange={(e) => setTaskScheduledTime(e.target.value)}
+                    className="bg-[#2C2C2E] border-transparent text-white focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] rounded-[12px] h-12"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="points" className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">Points (XP)</Label>
+                <div className="relative">
                     <Input
                         id="points"
                         type="number"
@@ -347,7 +403,6 @@ export default function Home() {
                         </div>
                     )}
                   </div>
-                </div>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="notes" className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">Notes (Optional)</Label>
@@ -361,13 +416,65 @@ export default function Home() {
               </div>
 
               {isGoogleCalendarConnected && (
-                <div className="flex items-center justify-between py-2 px-1">
-                    <div className="flex items-center gap-2">
-                        <CalendarIcon size={16} className="text-[#EA4335]" />
-                        <Label htmlFor="gcal" className="text-white font-medium cursor-pointer">Add to Google Calendar</Label>
+                <>
+                  <div className="flex items-center justify-between py-2 px-1">
+                      <div className="flex items-center gap-2">
+                          <CalendarIcon size={16} className="text-[#EA4335]" />
+                          <Label htmlFor="gcal" className="text-white font-medium cursor-pointer">Add to Google Calendar</Label>
+                      </div>
+                      <Switch id="gcal" checked={syncToCalendar} onCheckedChange={setSyncToCalendar} className="data-[state=checked]:bg-[#EA4335]" />
+                  </div>
+                  
+                  {syncToCalendar && (
+                    <div className="space-y-3 bg-[#2C2C2E] rounded-[12px] p-3 border border-white/5">
+                      <div className="grid gap-2">
+                        <Label className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">Calendar Item Type</Label>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant={calendarItemType === "task" ? "default" : "outline"}
+                            className={cn(
+                              "flex-1 h-10 rounded-[8px]",
+                              calendarItemType === "task" 
+                                ? "bg-[#0A84FF] text-white hover:bg-[#007AFF]" 
+                                : "bg-[#1C1C1E] text-[#8E8E93] border-white/10 hover:bg-[#2C2C2E]"
+                            )}
+                            onClick={() => setCalendarItemType("task")}
+                          >
+                            Task
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={calendarItemType === "event" ? "default" : "outline"}
+                            className={cn(
+                              "flex-1 h-10 rounded-[8px]",
+                              calendarItemType === "event" 
+                                ? "bg-[#0A84FF] text-white hover:bg-[#007AFF]" 
+                                : "bg-[#1C1C1E] text-[#8E8E93] border-white/10 hover:bg-[#2C2C2E]"
+                            )}
+                            onClick={() => setCalendarItemType("event")}
+                          >
+                            Event
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {calendarItemType === "event" && (
+                        <div className="grid gap-2">
+                          <Label htmlFor="endTime" className="text-[#8E8E93] font-medium text-xs uppercase tracking-wide">End Time</Label>
+                          <Input
+                            id="endTime"
+                            type="time"
+                            value={taskEndTime}
+                            onChange={(e) => setTaskEndTime(e.target.value)}
+                            className="bg-[#1C1C1E] border-transparent text-white focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] rounded-[8px] h-10"
+                            placeholder="End time"
+                          />
+                        </div>
+                      )}
                     </div>
-                    <Switch id="gcal" checked={syncToCalendar} onCheckedChange={setSyncToCalendar} className="data-[state=checked]:bg-[#EA4335]" />
-                </div>
+                  )}
+                </>
               )}
             </div>
             <Button onClick={handleSaveTask} className="w-full bg-[#0A84FF] text-white hover:bg-[#007AFF] font-bold rounded-[12px] h-12 text-base">
@@ -382,10 +489,14 @@ export default function Home() {
         "space-y-3 pb-24 transition-all duration-500 rounded-[24px]",
         allTasksCompleted ? "p-6 bg-gradient-to-b from-[#0A84FF]/10 to-transparent border border-[#0A84FF]/20 shadow-[0_0_50px_-10px_rgba(10,132,255,0.3)]" : ""
       )}>
-        {allTasksCompleted && (
+        <AnimatePresence>
+          {allTasksCompleted && (
             <motion.div 
+                key="all-complete"
+                layout
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
                 className="mb-6 text-center"
             >
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#30D158]/20 text-[#30D158] mb-2 shadow-[0_0_20px_rgba(48,209,88,0.4)]">
@@ -394,11 +505,14 @@ export default function Home() {
                 <h3 className="text-xl font-bold text-white">All Tasks Complete!</h3>
                 <p className="text-[#8E8E93] text-sm">Great job crushing your goals today.</p>
             </motion.div>
-        )}
+          )}
+        </AnimatePresence>
 
         <AnimatePresence>
         {filteredTasks.map((task) => (
           <LiquidCard
+            as={motion.div}
+            layout
             key={task.id}
             className={cn(
                 "flex items-center gap-4 p-4 transition-all group",

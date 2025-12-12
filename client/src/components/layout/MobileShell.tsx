@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 
 export function MobileShell({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { rank, lifetimeXP, levelUp, dismissLevelUp, user } = useGame();
+  const { rank, lifetimeXP, levelUp, dismissLevelUp, user, nextRankXP } = useGame();
 
   const navItems = [
     { icon: Home, label: "Home", path: "/" },
@@ -52,7 +52,10 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
                     </div>
                     {/* Tiny XP Bar in Header */}
                     <div className="w-24 h-1 bg-[#2C2C2E] rounded-full mt-1 overflow-hidden">
-                        <div className="h-full bg-[#0A84FF] w-1/2" /> 
+                        <div
+                          className="h-full bg-[#0A84FF] transition-all duration-300"
+                          style={{ width: `${Math.min(100, Math.round((lifetimeXP / (nextRankXP || 1)) * 100))}%` }}
+                        />
                     </div>
                 </div>
             </div>

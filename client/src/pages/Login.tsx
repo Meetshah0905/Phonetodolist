@@ -11,25 +11,53 @@ import { useGame } from "@/lib/store";
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { login } = useGame();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      // Mock login
-      login(email, "Agent");
+
+    try {
+      const response = await fetch("http://localhost:4000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || "Login failed");
+      }
+
+      const data = await response.json();
+
+      login(data.email || email, "Agent", data.id);
+      
+      // Set calendar connection status if provided
+      if (data.isGoogleCalendarConnected !== undefined) {
+        // The store will handle this through a context update if needed
+        // For now, the Profile page will check this when it loads
+      }
+      
       toast({
         title: "Welcome back!",
         description: "Successfully logged in.",
       });
       setLocation("/");
-    }, 1500);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Unable to login.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -60,6 +88,8 @@ export default function Login() {
               <Input 
                 id="password" 
                 type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required 
                 className="bg-[#2C2C2E] border-transparent text-white focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF]"
               />

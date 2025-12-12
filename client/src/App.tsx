@@ -15,6 +15,7 @@ import Signup from "@/pages/Signup";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType<any> }) {
   const { user } = useGame();
+  console.log("ProtectedRoute check - user:", user);
   return user ? <Component /> : <Redirect to="/login" />;
 }
 

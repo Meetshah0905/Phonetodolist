@@ -138,7 +138,7 @@ export default function Library() {
         {books.map((book) => (
           <LiquidCard 
             key={book.id}
-            className="p-0 overflow-hidden group flex flex-col h-full bg-[#1C1C1E] border-white/10"
+            className="p-0 overflow-hidden group flex flex-col h-full bg-[#121214] border border-white/10 rounded-[26px] shadow-[0_20px_60px_-30px_rgba(0,0,0,0.8)]"
           >
             {/* Cover Image Area - 60% Height */}
             <div className="relative aspect-[2/3] w-full overflow-hidden bg-[#2C2C2E]">
@@ -162,11 +162,11 @@ export default function Library() {
                 </div>
 
                  {/* Top Actions */}
-                <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                    <Button variant="secondary" size="icon" className="h-6 w-6 rounded-full bg-black/50 hover:bg-black/70 text-white backdrop-blur-sm" onClick={() => handleOpenEdit(book)}>
+                <div className="absolute top-2 left-2 flex gap-1">
+                    <Button variant="secondary" size="icon" className="h-6 w-6 rounded-full bg-black/60 hover:bg-black/70 text-white backdrop-blur-sm" onClick={() => handleOpenEdit(book)}>
                         <Pencil size={10} />
                     </Button>
-                    <Button variant="secondary" size="icon" className="h-6 w-6 rounded-full bg-black/50 hover:bg-black/70 text-[#FF453A] backdrop-blur-sm" onClick={(e) => handleDeleteBook(book.id, e)}>
+                    <Button variant="secondary" size="icon" className="h-6 w-6 rounded-full bg-black/60 hover:bg-black/70 text-[#FF453A] backdrop-blur-sm" onClick={(e) => handleDeleteBook(book.id, e)}>
                         <Trash2 size={10} />
                     </Button>
                 </div>
@@ -193,7 +193,7 @@ export default function Library() {
                         max={book.totalPages} 
                         step={1}
                         onValueChange={(val) => updateBookProgress(book.id, val[0])}
-                        className="h-1.5 [&>.relative>.absolute]:bg-[#0A84FF] [&_[role=slider]]:w-3 [&_[role=slider]]:h-3"
+                        className="h-2 [&>.relative>.absolute]:bg-[#0A84FF] [&_[role=slider]]:w-3 [&_[role=slider]]:h-3 [&_[role=slider]]:bg-white [&_[role=slider]]:border [&_[role=slider]]:border-[#0A84FF]"
                     />
                 </div>
             </div>

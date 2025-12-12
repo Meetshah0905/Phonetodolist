@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import completionSound from "@assets/soundeffect.MP3";
+import wishlistSound from "@assets/wishlistsound.MP3";
 import { toast } from "@/hooks/use-toast";
 
 type Task = {
@@ -47,6 +49,8 @@ type JournalEntry = {
     id: string;
     text: string;
     date: string; // ISO String
+    hasAudio?: boolean;
+    audioUrl?: string;
 };
 
 type GameState = {
@@ -93,15 +97,15 @@ type GameState = {
   saveJournalEntry: (text: string, audioBlob?: Blob) => Promise<void>;
   
   // Auth
-  user: { name: string; email: string } | null;
-  login: (email: string, name: string) => void;
+  user: { name: string; email: string; id?: string } | null;
+  login: (email: string, name: string, id?: string) => void;
   logout: () => void;
 
   // Google Calendar
   isGoogleCalendarConnected: boolean;
   connectGoogleCalendar: () => void;
   disconnectGoogleCalendar: () => void;
-  syncToGoogleCalendar: (item: { title: string; time?: string; date?: string; type?: string }) => void;
+  syncToGoogleCalendar: (item: { title: string; time?: string; endTime?: string; date?: string; type?: string; notes?: string }) => void;
 };
 
 const GameContext = createContext<GameState | undefined>(undefined);
@@ -136,7 +140,10 @@ const INITIAL_WISHLIST: WishlistItem[] = [
 ];
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; email: string; id?: string } | null>(() => {
+    const saved = localStorage.getItem("user");
+    return saved ? JSON.parse(saved) : null;
+  });
   const [points, setPoints] = useState(0);
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
   const [habits, setHabits] = useState<Habit[]>(INITIAL_HABITS);
@@ -147,48 +154,245 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   ]);
   const [lifetimeXP, setLifetimeXP] = useState(0); // Start with 0 XP
   const [levelUp, setLevelUp] = useState({ show: false, newRank: "" });
+  const completionAudioRef = useRef<HTMLAudioElement | null>(null);
+  const wishlistAudioRef = useRef<HTMLAudioElement | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isHydratingRef = useRef(false);
+  const dailyBonusAwardedRef = useRef<Record<string, boolean>>({});
+
+  // Play provided completion sound effect
+  const playCompletionSound = () => {
+    if (typeof window === "undefined") return;
+
+    try {
+      if (!completionAudioRef.current) {
+        completionAudioRef.current = new Audio(completionSound);
+        completionAudioRef.current.volume = 0.35;
+      }
+
+      const audio = completionAudioRef.current;
+      audio.currentTime = 0;
+      audio.play().catch(() => {
+        // Audio play can be blocked until user interaction; ignore errors
+      });
+    } catch {
+      // Audio may be blocked; fail silently
+    }
+  };
+
+  const playWishlistSound = () => {
+    if (typeof window === "undefined") return;
+
+    try {
+      if (!wishlistAudioRef.current) {
+        wishlistAudioRef.current = new Audio(wishlistSound);
+        wishlistAudioRef.current.volume = 0.35;
+      }
+      const audio = wishlistAudioRef.current;
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
+    } catch {
+      // ignore
+    }
+  };
+
+  // --- Persistence helpers ---
+  const hydrateFromServer = async (userId: string) => {
+    try {
+      isHydratingRef.current = true;
+      const res = await fetch(`http://localhost:4000/api/state?userId=${userId}`);
+      if (!res.ok) throw new Error("Failed to load state");
+      const data = await res.json();
+      setPoints(data.points ?? 0);
+      setLifetimeXP(data.lifetimeXP ?? 0);
+      setTasks((data.tasks as Task[]) ?? INITIAL_TASKS);
+      setHabits((data.habits as Habit[]) ?? INITIAL_HABITS);
+      setBooks((data.books as Book[]) ?? INITIAL_BOOKS);
+      setWishlist((data.wishlist as WishlistItem[]) ?? INITIAL_WISHLIST);
+    } catch (err) {
+      console.error("Hydration error", err);
+    } finally {
+      isHydratingRef.current = false;
+    }
+  };
+
+  const persistState = () => {
+    if (!user?.id) return;
+    if (isHydratingRef.current) return;
+
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      fetch("http://localhost:4000/api/state", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          points,
+          lifetimeXP,
+          tasks,
+          habits,
+          books,
+          wishlist,
+        }),
+      }).catch((err) => console.error("Persist state failed", err));
+    }, 500);
+  };
+
+  useEffect(() => {
+    if (user?.id) {
+      hydrateFromServer(user.id);
+    } else {
+      // reset to defaults if no user
+      setPoints(0);
+      setLifetimeXP(0);
+      setTasks(INITIAL_TASKS);
+      setHabits(INITIAL_HABITS);
+      setBooks(INITIAL_BOOKS);
+      setWishlist(INITIAL_WISHLIST);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    persistState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [points, lifetimeXP, tasks, habits, books, wishlist]);
 
   // Google Calendar Integration
   const [isGoogleCalendarConnected, setIsGoogleCalendarConnected] = useState(false);
 
-  const connectGoogleCalendar = () => {
-    // Mock OAuth flow
-    const popup = window.open("", "Google Login", "width=500,height=600");
-    if (popup) {
-        popup.document.write("<h1>Connecting to Google...</h1><p>Please wait...</p>");
-        setTimeout(() => {
-            popup.close();
-            setIsGoogleCalendarConnected(true);
-            toast({ title: "Google Calendar Connected", description: "Your account has been linked successfully." });
-        }, 1500);
+  // Refresh Google Calendar link status when a user is loaded from storage
+  useEffect(() => {
+    if (!user?.email || !user?.id) return;
+
+    fetch(`http://localhost:4000/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: user.email, password: "check-status" }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.isGoogleCalendarConnected !== undefined) {
+          setIsGoogleCalendarConnected(data.isGoogleCalendarConnected);
+        }
+      })
+      .catch(() => {
+        // Non-blocking: if this fails, the rest of the app still works
+      });
+  }, [user?.email, user?.id]);
+
+  const connectGoogleCalendar = async () => {
+    if (!user?.id) {
+      toast({ title: "Error", description: "Please log in first", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:4000/api/auth/google/connect?userId=${user.id}`);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        toast({ 
+          title: "Setup Required", 
+          description: data.message || "Google Calendar needs to be configured. Check GOOGLE_CALENDAR_SETUP.md", 
+          variant: "destructive",
+          duration: 8000,
+        });
+        return;
+      }
+      
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      }
+    } catch (error) {
+      toast({ title: "Connection Failed", description: "Unable to connect to Google Calendar", variant: "destructive" });
     }
   };
 
-  const disconnectGoogleCalendar = () => {
-    setIsGoogleCalendarConnected(false);
-    toast({ title: "Disconnected", description: "Google Calendar has been unlinked." });
+  const disconnectGoogleCalendar = async () => {
+    if (!user?.id) return;
+
+    try {
+      await fetch("http://localhost:4000/api/auth/google/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      
+      setIsGoogleCalendarConnected(false);
+      toast({ title: "Disconnected", description: "Google Calendar has been unlinked." });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to disconnect", variant: "destructive" });
+    }
   };
 
-  const syncToGoogleCalendar = (item: { title: string; time?: string; date?: string; type?: string }) => {
-    if (!isGoogleCalendarConnected) {
+  const syncToGoogleCalendar = async (item: { title: string; time?: string; endTime?: string; date?: string; type?: string; notes?: string }) => {
+    if (!isGoogleCalendarConnected || !user?.id) {
         toast({ title: "Connect Google Calendar", description: "Please link your account in Profile settings first.", variant: "destructive" });
         return;
     }
     
-    toast({ 
-        title: "Synced to Google Calendar", 
-        description: `Added: ${item.title}`, 
-        className: "bg-white text-black font-bold border-none" 
-    });
+    try {
+      await fetch("http://localhost:4000/api/calendar/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          title: item.title,
+          time: item.time,
+          endTime: item.endTime,
+          date: item.date,
+          type: item.type || "event",
+          notes: item.notes || "",
+        }),
+      }).then(async (res) => {
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.details || err.message || "Failed to sync");
+        }
+      });
+
+      const itemType = item.type === "task" ? "Google Task" : "Google Calendar";
+      toast({ 
+          title: `Synced to ${itemType}`, 
+          description: `Added: ${item.title}`, 
+          className: "bg-white text-black font-bold border-none" 
+      });
+    } catch (error: any) {
+      toast({ 
+        title: "Sync Failed", 
+        description: error?.message || "Unable to add to Google Calendar", 
+        variant: "destructive" 
+      });
+    }
   };
 
-  const login = (email: string, name: string) => {
-    setUser({ email, name });
-    // In a real app, you would fetch user data here
+  const login = (email: string, name: string, id?: string) => {
+    const userData = { email, name, id };
+    setUser(userData);
+    localStorage.setItem("user", JSON.stringify(userData));
+    
+    // Check if Google Calendar is connected for this user
+    if (id) {
+      fetch(`http://localhost:4000/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: "check-status" }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.isGoogleCalendarConnected !== undefined) {
+            setIsGoogleCalendarConnected(data.isGoogleCalendarConnected);
+          }
+        })
+        .catch(() => {
+          // Ignore errors, user is already logged in
+        });
+    }
   };
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem("user");
     setPoints(0);
     setLifetimeXP(0);
     setTasks(INITIAL_TASKS);
@@ -198,49 +402,50 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // Rank Logic
   const getRankData = (xp: number) => {
       // Iron
-      if (xp < 500) return { name: "Iron 1", nextXP: 500 };
-      if (xp < 1000) return { name: "Iron 2", nextXP: 1000 };
-      if (xp < 1500) return { name: "Iron 3", nextXP: 1500 };
+      if (xp < 2000) return { name: "Iron 1", nextXP: 2000 };
+      if (xp < 2500) return { name: "Iron 2", nextXP: 2500 };
+      if (xp < 3000) return { name: "Iron 3", nextXP: 3000 };
       
       // Bronze
-      if (xp < 2500) return { name: "Bronze 1", nextXP: 2500 };
-      if (xp < 3500) return { name: "Bronze 2", nextXP: 3500 };
-      if (xp < 5000) return { name: "Bronze 3", nextXP: 5000 };
+      if (xp < 4000) return { name: "Bronze 1", nextXP: 4000 };
+      if (xp < 5500) return { name: "Bronze 2", nextXP: 5500 };
+      if (xp < 7500) return { name: "Bronze 3", nextXP: 7500 };
       
       // Silver
-      if (xp < 6000) return { name: "Silver 1", nextXP: 6000 };
-      if (xp < 7000) return { name: "Silver 2", nextXP: 7000 };
-      if (xp < 8500) return { name: "Silver 3", nextXP: 8500 };
+      if (xp < 10000) return { name: "Silver 1", nextXP: 10000 };
+      if (xp < 15000) return { name: "Silver 2", nextXP: 15000 };
+      if (xp < 22000) return { name: "Silver 3", nextXP: 22000 };
       
       // Gold
-      if (xp < 10000) return { name: "Gold 1", nextXP: 10000 };
-      if (xp < 11500) return { name: "Gold 2", nextXP: 11500 };
-      if (xp < 13500) return { name: "Gold 3", nextXP: 13500 };
+      if (xp < 32000) return { name: "Gold 1", nextXP: 32000 };
+      if (xp < 50000) return { name: "Gold 2", nextXP: 50000 };
+      if (xp < 75000) return { name: "Gold 3", nextXP: 75000 };
       
       // Platinum
-      if (xp < 15500) return { name: "Platinum 1", nextXP: 15500 };
-      if (xp < 17500) return { name: "Platinum 2", nextXP: 17500 };
-      if (xp < 20000) return { name: "Platinum 3", nextXP: 20000 };
+      if (xp < 110000) return { name: "Platinum 1", nextXP: 110000 };
+      if (xp < 160000) return { name: "Platinum 2", nextXP: 160000 };
+      if (xp < 230000) return { name: "Platinum 3", nextXP: 230000 };
       
       // Diamond
-      if (xp < 23000) return { name: "Diamond 1", nextXP: 23000 };
-      if (xp < 26000) return { name: "Diamond 2", nextXP: 26000 };
-      if (xp < 30000) return { name: "Diamond 3", nextXP: 30000 };
+      if (xp < 330000) return { name: "Diamond 1", nextXP: 330000 };
+      if (xp < 470000) return { name: "Diamond 2", nextXP: 470000 };
+      if (xp < 650000) return { name: "Diamond 3", nextXP: 650000 };
       
       // Ascendant
-      if (xp < 35000) return { name: "Ascendant 1", nextXP: 35000 };
-      if (xp < 40000) return { name: "Ascendant 2", nextXP: 40000 };
-      if (xp < 50000) return { name: "Ascendant 3", nextXP: 50000 };
+      if (xp < 750000) return { name: "Ascendant 1", nextXP: 750000 };
+      if (xp < 850000) return { name: "Ascendant 2", nextXP: 850000 };
+      if (xp < 920000) return { name: "Ascendant 3", nextXP: 920000 };
       
       // Immortal
-      if (xp < 60000) return { name: "Immortal 1", nextXP: 60000 };
-      if (xp < 70000) return { name: "Immortal 2", nextXP: 70000 };
-      if (xp < 80000) return { name: "Immortal 3", nextXP: 80000 };
+      if (xp < 950000) return { name: "Immortal 1", nextXP: 950000 };
+      if (xp < 970000) return { name: "Immortal 2", nextXP: 970000 };
+      if (xp < 985000) return { name: "Immortal 3", nextXP: 985000 };
       
       return { name: "Radiant", nextXP: Infinity };
   };
 
   const { name: rank, nextXP: nextRankXP } = getRankData(lifetimeXP);
+  const rankProgress = Math.min(100, nextRankXP === 0 ? 0 : Math.round((lifetimeXP / nextRankXP) * 100));
 
   // --- Logic: Daily Penalties & Reset ---
   useEffect(() => {
@@ -251,21 +456,38 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         // It's a new day! Calculate penalties.
         let penalty = 0;
         
-        // 1. Unfinished tasks from "yesterday" (simplified: checking current list)
+        // 1. Unfinished tasks from "yesterday" - deduct 50 points per incomplete task
         const unfinishedTasks = tasks.filter(t => !t.completed && t.date < today);
         if (unfinishedTasks.length > 0) {
-            penalty += unfinishedTasks.length * 20;
-            toast({ title: "Task Penalty", description: `-${unfinishedTasks.length * 20} pts for missed tasks`, variant: "destructive" });
+            const taskPenalty = unfinishedTasks.length * 50;
+            penalty += taskPenalty;
+            toast({ 
+              title: "Task Penalty", 
+              description: `-${taskPenalty} pts for ${unfinishedTasks.length} missed task${unfinishedTasks.length > 1 ? 's' : ''}`, 
+              variant: "destructive" 
+            });
         }
 
-        // 2. Overdue Books
+        // 2. Incomplete habits from yesterday - deduct 20 points per incomplete habit
+        const yesterdayHabits = habits.filter(h => !h.completed);
+        if (yesterdayHabits.length > 0) {
+            const habitPenalty = yesterdayHabits.length * 20;
+            penalty += habitPenalty;
+            toast({ 
+              title: "Routine Penalty", 
+              description: `-${habitPenalty} pts for ${yesterdayHabits.length} incomplete habit${yesterdayHabits.length > 1 ? 's' : ''}`, 
+              variant: "destructive" 
+            });
+        }
+
+        // 3. Overdue Books
         const overdueBooks = books.filter(b => b.status !== "completed" && b.deadline < today);
         if (overdueBooks.length > 0) {
             penalty += overdueBooks.length * 20;
             toast({ title: "Library Penalty", description: `-${overdueBooks.length * 20} pts for overdue books`, variant: "destructive" });
         }
 
-        // 3. Journal Check (Did they journal yesterday?)
+        // 4. Journal Check (Did they journal yesterday?) - deduct 50 points if no entry
         // Check if there is an entry for "yesterday"
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
@@ -307,6 +529,21 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const deductPoints = (amount: number) => {
     setPoints((prev) => Math.max(0, prev - amount));
+    setLifetimeXP((prev) => {
+        const newXP = Math.max(0, prev - amount);
+        const oldRank = getRankData(prev).name;
+        const newRank = getRankData(newXP).name;
+        
+        if (newRank !== oldRank) {
+            // Rank decreased, could show a notification if desired
+            toast({ 
+              title: "Rank Changed", 
+              description: `${oldRank} → ${newRank}`, 
+              variant: "destructive" 
+            });
+        }
+        return newXP;
+    });
   };
 
   // --- Logic: AI Scoring Simulation ---
@@ -338,7 +575,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       return new Promise<void>((resolve) => {
           setTimeout(() => {
               addPoints(50);
-              const newEntry = { id: Math.random().toString(), text, date: new Date().toISOString() };
+              const newEntry = { 
+                id: Math.random().toString(), 
+                text, 
+                date: new Date().toISOString(),
+                hasAudio: !!audioBlob,
+              };
               setJournalEntries(prev => [...prev, newEntry]);
               resolve();
           }, 500);
@@ -369,6 +611,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           const isCompleting = !t.completed;
           if (isCompleting) {
             addPoints(t.points);
+            playCompletionSound();
             toast({ title: "Task Complete!", description: `+${t.points} pts`, className: "bg-[#0A84FF] text-white font-bold" });
           } else {
             deductPoints(t.points);
@@ -382,12 +625,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const today = new Date().toISOString().split('T')[0];
       const todaysTasks = newTasks.filter(t => t.date === today);
       const allDone = todaysTasks.length > 0 && todaysTasks.every(t => t.completed);
-      
-      if (allDone && !prev.filter(t => t.date === today).every(t => t.completed)) {
+
+      const prevAllDone = prev.filter(t => t.date === today).every(t => t.completed);
+      if (allDone && !dailyBonusAwardedRef.current[today]) {
+        dailyBonusAwardedRef.current[today] = true;
         setTimeout(() => {
             toast({ title: "DAY CONQUERED", description: "All daily protocols complete. +500 Bonus.", className: "bg-[#0A84FF] text-white font-bold text-lg" });
             addPoints(500);
         }, 500);
+      } else if (!allDone && prevAllDone && dailyBonusAwardedRef.current[today]) {
+        dailyBonusAwardedRef.current[today] = false;
+        deductPoints(500);
       }
 
       return newTasks;
@@ -418,6 +666,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           const isCompleting = !h.completed;
           if (isCompleting) {
             addPoints(h.points);
+            playCompletionSound();
             toast({ title: "Habit Done!", description: `+${h.points} pts`, className: "bg-[#30D158] text-white font-bold" });
           } else {
             deductPoints(h.points);
@@ -449,15 +698,24 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setBooks((prev) =>
       prev.map((b) => {
         if (b.id === id) {
+            const oldProgress = b.progress;
             const newProgress = Math.min(100, Math.round((page / b.totalPages) * 100));
             
-            if (newProgress === 100 && b.status !== "completed") {
+            // Only award points if transitioning from incomplete to 100% for the first time
+            if (newProgress === 100 && oldProgress < 100 && b.status !== "completed") {
                 addPoints(b.totalPoints);
                 toast({ title: "Book Finished!", description: `+${b.totalPoints} pts`, className: "bg-[#0A84FF] text-white font-bold" });
                 return { ...b, currentPage: page, progress: newProgress, status: "completed" };
             }
             
-            return { ...b, currentPage: page, progress: newProgress, status: newProgress > 0 ? "reading" : "not-started" };
+            // If sliding back from 100%, deduct points
+            if (oldProgress === 100 && newProgress < 100 && b.status === "completed") {
+                deductPoints(b.totalPoints);
+                toast({ title: "Progress Updated", description: `Book unmarked as complete. -${b.totalPoints} pts`, variant: "destructive" });
+                return { ...b, currentPage: page, progress: newProgress, status: "reading" };
+            }
+            
+            return { ...b, currentPage: page, progress: newProgress, status: newProgress > 0 ? (b.status === "completed" ? "completed" : "reading") : "not-started" };
         }
         return b;
       })
@@ -488,6 +746,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       deductPoints(item.cost);
       setWishlist((prev) => prev.map((i) => (i.id === id ? { ...i, redeemed: true } : i)));
       toast({ title: "Item Redeemed!", description: `Enjoy your ${item.name}`, className: "bg-white text-black font-bold" });
+      playWishlistSound();
     } else {
       toast({ title: "Insufficient Funds", description: `You need ${item.cost - points} more points.`, variant: "destructive" });
     }

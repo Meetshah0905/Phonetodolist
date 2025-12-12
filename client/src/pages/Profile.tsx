@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { useGame } from "@/lib/store";
@@ -9,36 +9,60 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 
 const RANKS = [
-    { name: "Iron 1", min: 0, color: "text-gray-400", bg: "from-gray-500/20" },
-    { name: "Iron 2", min: 500, color: "text-gray-400", bg: "from-gray-500/20" },
-    { name: "Iron 3", min: 1000, color: "text-gray-400", bg: "from-gray-500/20" },
-    { name: "Bronze 1", min: 1500, color: "text-[#cd7f32]", bg: "from-[#cd7f32]/20" },
-    { name: "Bronze 2", min: 2500, color: "text-[#cd7f32]", bg: "from-[#cd7f32]/20" },
-    { name: "Bronze 3", min: 3500, color: "text-[#cd7f32]", bg: "from-[#cd7f32]/20" },
-    { name: "Silver 1", min: 5000, color: "text-slate-300", bg: "from-slate-300/20" },
-    { name: "Silver 2", min: 6000, color: "text-slate-300", bg: "from-slate-300/20" },
-    { name: "Silver 3", min: 7000, color: "text-slate-300", bg: "from-slate-300/20" },
-    { name: "Gold 1", min: 8500, color: "text-yellow-400", bg: "from-yellow-400/20" },
-    { name: "Gold 2", min: 10000, color: "text-yellow-400", bg: "from-yellow-400/20" },
-    { name: "Gold 3", min: 11500, color: "text-yellow-400", bg: "from-yellow-400/20" },
-    { name: "Platinum 1", min: 13500, color: "text-cyan-400", bg: "from-cyan-400/20" },
-    { name: "Platinum 2", min: 15500, color: "text-cyan-400", bg: "from-cyan-400/20" },
-    { name: "Platinum 3", min: 17500, color: "text-cyan-400", bg: "from-cyan-400/20" },
-    { name: "Diamond 1", min: 20000, color: "text-purple-400", bg: "from-purple-400/20" },
-    { name: "Diamond 2", min: 23000, color: "text-purple-400", bg: "from-purple-400/20" },
-    { name: "Diamond 3", min: 26000, color: "text-purple-400", bg: "from-purple-400/20" },
-    { name: "Ascendant 1", min: 30000, color: "text-emerald-400", bg: "from-emerald-400/20" },
-    { name: "Ascendant 2", min: 35000, color: "text-emerald-400", bg: "from-emerald-400/20" },
-    { name: "Ascendant 3", min: 40000, color: "text-emerald-400", bg: "from-emerald-400/20" },
-    { name: "Immortal 1", min: 50000, color: "text-red-500", bg: "from-red-500/20" },
-    { name: "Immortal 2", min: 60000, color: "text-red-500", bg: "from-red-500/20" },
-    { name: "Immortal 3", min: 70000, color: "text-red-500", bg: "from-red-500/20" },
-    { name: "Radiant", min: 80000, color: "text-yellow-100", bg: "from-yellow-100/20" },
+    { name: "Iron 1", min: 2000, color: "text-gray-400", bg: "from-gray-500/20" },
+    { name: "Iron 2", min: 2500, color: "text-gray-400", bg: "from-gray-500/20" },
+    { name: "Iron 3", min: 3000, color: "text-gray-400", bg: "from-gray-500/20" },
+    { name: "Bronze 1", min: 4000, color: "text-[#cd7f32]", bg: "from-[#cd7f32]/20" },
+    { name: "Bronze 2", min: 5500, color: "text-[#cd7f32]", bg: "from-[#cd7f32]/20" },
+    { name: "Bronze 3", min: 7500, color: "text-[#cd7f32]", bg: "from-[#cd7f32]/20" },
+    { name: "Silver 1", min: 10000, color: "text-slate-300", bg: "from-slate-300/20" },
+    { name: "Silver 2", min: 15000, color: "text-slate-300", bg: "from-slate-300/20" },
+    { name: "Silver 3", min: 22000, color: "text-slate-300", bg: "from-slate-300/20" },
+    { name: "Gold 1", min: 32000, color: "text-yellow-400", bg: "from-yellow-400/20" },
+    { name: "Gold 2", min: 50000, color: "text-yellow-400", bg: "from-yellow-400/20" },
+    { name: "Gold 3", min: 75000, color: "text-yellow-400", bg: "from-yellow-400/20" },
+    { name: "Platinum 1", min: 110000, color: "text-cyan-400", bg: "from-cyan-400/20" },
+    { name: "Platinum 2", min: 160000, color: "text-cyan-400", bg: "from-cyan-400/20" },
+    { name: "Platinum 3", min: 230000, color: "text-cyan-400", bg: "from-cyan-400/20" },
+    { name: "Diamond 1", min: 330000, color: "text-purple-400", bg: "from-purple-400/20" },
+    { name: "Diamond 2", min: 470000, color: "text-purple-400", bg: "from-purple-400/20" },
+    { name: "Diamond 3", min: 650000, color: "text-purple-400", bg: "from-purple-400/20" },
+    { name: "Ascendant 1", min: 750000, color: "text-emerald-400", bg: "from-emerald-400/20" },
+    { name: "Ascendant 2", min: 850000, color: "text-emerald-400", bg: "from-emerald-400/20" },
+    { name: "Ascendant 3", min: 920000, color: "text-emerald-400", bg: "from-emerald-400/20" },
+    { name: "Immortal 1", min: 950000, color: "text-red-500", bg: "from-red-500/20" },
+    { name: "Immortal 2", min: 970000, color: "text-red-500", bg: "from-red-500/20" },
+    { name: "Immortal 3", min: 985000, color: "text-red-500", bg: "from-red-500/20" },
+    { name: "Radiant", min: 1000000, color: "text-yellow-100", bg: "from-yellow-100/20" },
 ];
 
 export default function Profile() {
   const { lifetimeXP, rank, nextRankXP, logout, user, isGoogleCalendarConnected, connectGoogleCalendar, disconnectGoogleCalendar } = useGame();
   const [, setLocation] = useLocation();
+  
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("connected") === "true") {
+      // Clear the URL parameter
+      window.history.replaceState({}, "", "/profile");
+      
+      // Update connection status in store
+      if (user?.id) {
+        fetch(`http://localhost:4000/api/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: user.email, password: "check" }),
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.isGoogleCalendarConnected) {
+              // Refresh the page to show updated status
+              window.location.reload();
+            }
+          });
+      }
+    }
+  }, [user]);
   
   const currentRankIdx = RANKS.findIndex(r => r.name === rank);
   const progress = nextRankXP === Infinity 
@@ -137,20 +161,29 @@ export default function Profile() {
         <h3 className="text-sm font-bold text-[#8E8E93] uppercase pl-2">Integrations & Settings</h3>
         
         {/* Google Calendar */}
-        <div className="bg-[#1C1C1E] rounded-[20px] p-4 border border-white/10 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
-                    <Calendar size={20} />
+        <div className="bg-[#1C1C1E] rounded-[20px] p-4 border border-white/10">
+            <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
+                        <Calendar size={20} />
+                    </div>
+                    <div>
+                        <div className="font-bold text-white text-sm">Google Calendar & Tasks</div>
+                        <div className="text-[10px] text-[#8E8E93]">{isGoogleCalendarConnected ? "Connected" : "Sync tasks & habits"}</div>
+                    </div>
                 </div>
-                <div>
-                    <div className="font-bold text-white text-sm">Google Calendar</div>
-                    <div className="text-[10px] text-[#8E8E93]">{isGoogleCalendarConnected ? "Connected" : "Sync tasks & habits"}</div>
-                </div>
+                <Switch 
+                    checked={isGoogleCalendarConnected} 
+                    onCheckedChange={(checked) => checked ? connectGoogleCalendar() : disconnectGoogleCalendar()} 
+                />
             </div>
-            <Switch 
-                checked={isGoogleCalendarConnected} 
-                onCheckedChange={(checked) => checked ? connectGoogleCalendar() : disconnectGoogleCalendar()} 
-            />
+            {isGoogleCalendarConnected && (
+                <div className="mt-3 pt-3 border-t border-white/5">
+                    <div className="text-[10px] text-yellow-400 bg-yellow-400/10 px-2 py-1.5 rounded-lg">
+                        ⚠️ To use Google Tasks, please disconnect and reconnect to grant new permissions
+                    </div>
+                </div>
+            )}
         </div>
 
         {/* Task Notifications */}

@@ -126,52 +126,72 @@ export default function Shop() {
                 <LiquidCard 
                     key={item.id}
                     className={cn(
-                        "relative flex flex-col justify-between p-4 h-full bg-[#1C1C1E] border-white/10 group",
-                        item.redeemed && "opacity-50 grayscale"
+                        "group relative flex flex-col justify-between p-4 h-full bg-[#111112] border border-white/10 rounded-[24px] shadow-[0_20px_60px_-30px_rgba(0,0,0,0.8)] gap-3",
+                        item.redeemed && "opacity-60"
                     )}
                 >
-                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                         <Button 
+                    <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-sm rounded-full p-1 border border-white/10">
+                        <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-6 w-6 text-[#8E8E93] hover:text-white bg-[#1C1C1E]"
-                            onClick={() => handleOpenEdit(item)}
+                            className="h-8 w-8 text-white hover:text-white hover:bg-white/10"
+                            onClick={(e) => { e.stopPropagation(); handleOpenEdit(item); }}
                         >
-                            <Pencil size={12} />
+                            <Pencil size={14} />
                         </Button>
                         <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-6 w-6 text-[#8E8E93] hover:text-[#FF453A] bg-[#1C1C1E]"
+                            className="h-8 w-8 text-[#FF453A] hover:text-[#FF453A] hover:bg-[#FF453A]/10"
                             onClick={(e) => handleDeleteItem(item.id, e)}
                         >
-                            <Trash2 size={12} />
+                            <Trash2 size={14} />
                         </Button>
                     </div>
 
                     {/* Placeholder/Real Image Area */}
-                    <div className="w-full aspect-square bg-[#2C2C2E] rounded-[12px] mb-4 flex items-center justify-center border border-white/5 relative overflow-hidden group-hover:scale-105 transition-transform duration-500">
+                    <div className="w-full aspect-square rounded-[18px] flex items-center justify-center border border-white/5 relative overflow-hidden bg-gradient-to-br from-[#1f1f21] via-[#1a1a1c] to-[#0f0f10]">
                         {item.image ? (
                              <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                         ) : (
-                            <span className="text-[#8E8E93] text-xs font-medium uppercase">{item.name.split(' ')[0]}</span>
+                            <span className="text-[#8E8E93] text-xs font-semibold tracking-wide uppercase">{item.name || "Item"}</span>
                         )}
                     </div>
 
-                    <div>
-                        <div className="flex justify-between items-start mb-2">
-                            <h3 className="text-sm font-bold text-white leading-tight">{item.name}</h3>
+                    <div className="space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                            <div>
+                                <h3 className="text-base font-bold text-white leading-tight">{item.name}</h3>
+                                <div className="text-sm font-semibold text-[#0A84FF]">{item.cost.toLocaleString()} PTS</div>
+                            </div>
+                            <div className="flex gap-1">
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-9 w-9 text-white hover:text-white hover:bg-white/10"
+                                    onClick={(e) => { e.stopPropagation(); handleOpenEdit(item); }}
+                                >
+                                    <Pencil size={14} />
+                                </Button>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-9 w-9 text-[#FF453A] hover:text-[#FF453A] hover:bg-[#FF453A]/10"
+                                    onClick={(e) => handleDeleteItem(item.id, e)}
+                                >
+                                    <Trash2 size={14} />
+                                </Button>
+                            </div>
                         </div>
-                        <div className="text-xs font-semibold text-[#0A84FF] mb-4">{item.cost.toLocaleString()} PTS</div>
                     </div>
 
                     {!item.redeemed && (
-                        <div className="mb-4 space-y-1.5">
-                            <div className="flex justify-between text-[10px] font-bold uppercase text-[#8E8E93]">
+                        <div className="mb-2 space-y-2">
+                            <div className="flex justify-between text-[11px] font-bold uppercase text-[#8E8E93]">
                                 <span>Savings</span>
                                 <span>{percentage.toFixed(0)}%</span>
                             </div>
-                            <div className="h-1.5 bg-[#2C2C2E] rounded-full overflow-hidden">
+                            <div className="h-2 bg-[#2C2C2E] rounded-full overflow-hidden">
                                 <div 
                                     className={cn(
                                         "h-full transition-all duration-500 rounded-full",
@@ -186,9 +206,9 @@ export default function Shop() {
                     <Button 
                         onClick={() => redeemItem(item.id)}
                         disabled={!canAfford || item.redeemed}
-                        size="sm"
+                        size="lg"
                         className={cn(
-                            "w-full font-bold text-xs h-9 rounded-[10px]",
+                            "w-full font-bold text-sm h-11 rounded-[12px]",
                             canAfford 
                                 ? "bg-[#0A84FF] text-white hover:bg-[#007AFF] shadow-lg shadow-blue-900/20" 
                                 : "bg-[#2C2C2E] text-[#8E8E93] border border-white/5"

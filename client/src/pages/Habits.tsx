@@ -84,10 +84,15 @@ export default function Habits() {
     }
 
     if (syncToCalendar && isGoogleCalendarConnected) {
+        const timeRange = getResetTime(habitType);
+        const startTime = timeRange.split(' - ')[0];
+        
         syncToGoogleCalendar({
-            title: habitTitle,
-            type: habitType,
-            date: "Daily"
+            title: `${habitTitle} (${habitType} routine)`,
+            time: startTime,
+            date: new Date().toISOString().split("T")[0],
+            type: "task",
+            notes: `Routine: ${habitType} | ${timeRange}`
         });
     }
 
