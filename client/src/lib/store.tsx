@@ -179,29 +179,42 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isHydratingRef = useRef(false);
 
-  // RESTORED: Play Sound Functions
+  // RESTORED: Play Sound Functions - Preload audio for instant playback
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      completionAudioRef.current = new Audio(completionSound);
+      completionAudioRef.current.volume = 0.4;
+      completionAudioRef.current.preload = "auto";
+      wishlistAudioRef.current = new Audio(wishlistSound);
+      wishlistAudioRef.current.volume = 0.4;
+      wishlistAudioRef.current.preload = "auto";
+    }
+  }, []);
+
   const playCompletionSound = () => {
     if (typeof window === "undefined") return;
     try {
-      if (!completionAudioRef.current) {
-        completionAudioRef.current = new Audio(completionSound);
-        completionAudioRef.current.volume = 0.4;
+      if (completionAudioRef.current) {
+        // Reset and play immediately - don't wait for state updates
+        completionAudioRef.current.currentTime = 0;
+        completionAudioRef.current.play().catch(() => {});
       }
-      completionAudioRef.current.currentTime = 0;
-      completionAudioRef.current.play().catch(() => {});
-    } catch (e) { console.log("Audio play failed", e); }
+    } catch (e) { 
+      // Silently fail
+    }
   };
 
   const playWishlistSound = () => {
     if (typeof window === "undefined") return;
     try {
-      if (!wishlistAudioRef.current) {
-        wishlistAudioRef.current = new Audio(wishlistSound);
-        wishlistAudioRef.current.volume = 0.4;
+      if (wishlistAudioRef.current) {
+        // Reset and play immediately
+        wishlistAudioRef.current.currentTime = 0;
+        wishlistAudioRef.current.play().catch(() => {});
       }
-      wishlistAudioRef.current.currentTime = 0;
-      wishlistAudioRef.current.play().catch(() => {});
-    } catch (e) { console.log("Audio play failed", e); }
+    } catch (e) { 
+      // Silently fail
+    }
   };
 
   const getToken = () => localStorage.getItem("token") || "meet-token";
@@ -313,37 +326,43 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const updateTask = (id: string, updates: Partial<Task>) => setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
   const deleteTask = (id: string) => setTasks(prev => prev.filter(t => t.id !== id));
   
-  const toggleTask = (id: string) => setTasks(prev => prev.map(t => {
+  const toggleTask = (id: string) => {
+    setTasks(prev => prev.map(t => {
       if (t.id === id) {
           const isCompleting = !t.completed;
+          // Play sound IMMEDIATELY before state updates (for instant feedback)
           if (isCompleting) {
+              playCompletionSound();
               addPoints(t.points);
-              playCompletionSound(); // Sound on completion
           } else {
               deductPoints(t.points);
           }
           return { ...t, completed: isCompleting };
       }
       return t;
-  }));
+    }));
+  };
 
   const addHabit = (h: Omit<Habit, "id" | "completed">) => setHabits(prev => [...prev, { ...h, id: Math.random().toString(), completed: false }]);
   const updateHabit = (id: string, u: Partial<Habit>) => setHabits(prev => prev.map(h => h.id === id ? { ...h, ...u } : h));
   const deleteHabit = (id: string) => setHabits(prev => prev.filter(h => h.id !== id));
   
-  const toggleHabit = (id: string) => setHabits(prev => prev.map(h => {
+  const toggleHabit = (id: string) => {
+    setHabits(prev => prev.map(h => {
       if (h.id === id) {
           const isCompleting = !h.completed;
+          // Play sound IMMEDIATELY before state updates
           if (isCompleting) {
+              playCompletionSound();
               addPoints(h.points);
-              playCompletionSound(); // Sound on completion
           } else {
               deductPoints(h.points);
           }
           return { ...h, completed: isCompleting };
       }
       return h;
-  }));
+    }));
+  };
 
   const addBook = (b: Omit<Book, "id" | "status" | "progress" | "currentPage">) => setBooks(prev => [...prev, { ...b, id: Math.random().toString(), status: "not-started", progress: 0, currentPage: 0 }]);
   const updateBook = (id: string, u: Partial<Book>) => setBooks(prev => prev.map(b => b.id === id ? { ...b, ...u } : b));

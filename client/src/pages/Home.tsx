@@ -6,7 +6,6 @@ import { useGame } from "@/lib/store";
 import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Plus, Check, Clock, Calendar as CalendarIcon, Pencil, Trash2, TrendingUp, Sparkles, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -249,15 +248,17 @@ export default function Home() {
       </div>
 
       <div className={cn("space-y-3 pb-24 transition-all duration-500 rounded-[24px]", allTasksCompleted ? "p-6 bg-gradient-to-b from-[#0A84FF]/10 to-transparent border border-[#0A84FF]/20" : "")}>
-        <AnimatePresence>
         {filteredTasks.map((task) => (
-          <LiquidCard as={motion.div} layout key={task.id} className={cn("flex items-center gap-4 p-4 transition-all group", task.completed ? "opacity-60" : "")} onClick={() => toggleTask(task.id)}>
-            <div className={cn("w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 relative", task.completed ? "bg-[#0A84FF] border-[#0A84FF]" : "border-[#8E8E93] group-hover:border-[#0A84FF]")}>{task.completed && <Check size={14} className="text-white font-bold" />}</div>
-            <div className="flex-1 min-w-0"><h3 className={cn("text-base font-semibold truncate", task.completed ? "text-[#8E8E93] line-through" : "text-white")}>{task.title}</h3><div className="flex items-center gap-3 mt-1"><span className="text-xs text-[#8E8E93] font-medium flex items-center gap-1"><Clock size={12} /> {task.time}</span><span className="bg-[#0A84FF]/10 text-[#0A84FF] px-2 py-0.5 rounded-[6px] text-[10px] font-bold border border-[#0A84FF]/20">{task.points} PTS</span></div></div>
+          <LiquidCard 
+            key={task.id} 
+            className={cn("flex items-center gap-4 p-4 transition-opacity duration-200 group", task.completed ? "opacity-60" : "")} 
+            onClick={() => toggleTask(task.id)}
+          >
+            <div className={cn("w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 relative transition-colors duration-200", task.completed ? "bg-[#0A84FF] border-[#0A84FF]" : "border-[#8E8E93] group-hover:border-[#0A84FF]")}>{task.completed && <Check size={14} className="text-white font-bold" />}</div>
+            <div className="flex-1 min-w-0"><h3 className={cn("text-base font-semibold truncate transition-all duration-200", task.completed ? "text-[#8E8E93] line-through" : "text-white")}>{task.title}</h3><div className="flex items-center gap-3 mt-1"><span className="text-xs text-[#8E8E93] font-medium flex items-center gap-1"><Clock size={12} /> {task.time}</span><span className="bg-[#0A84FF]/10 text-[#0A84FF] px-2 py-0.5 rounded-[6px] text-[10px] font-bold border border-[#0A84FF]/20">{task.points} PTS</span></div></div>
             <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}><Button variant="ghost" size="icon" className="h-8 w-8 text-[#8E8E93] hover:text-white" onClick={(e) => { e.stopPropagation(); handleOpenEdit(task); }}><Pencil size={16} /></Button><Button variant="ghost" size="icon" className="h-8 w-8 text-[#8E8E93] hover:text-[#FF453A]" onClick={(e) => handleDeleteTask(task.id, e)}><Trash2 size={16} /></Button></div>
           </LiquidCard>
         ))}
-        </AnimatePresence>
       </div>
     </MobileShell>
   );
