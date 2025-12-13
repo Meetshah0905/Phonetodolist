@@ -23,34 +23,35 @@ export async function registerRoutes(
     
     if (!email || !password) {
       console.log("[Signup Route] Error: Missing email or password");
-      return res.status(400).json({ message: "Email and password are required" });
+      return res.status(400).json({ success: false, message: "Email and password are required" });
     }
 
     try {
       const existingUser = await User.findOne({ email }).exec();
       if (existingUser) {
-        return res.status(400).json({ message: "User already exists" });
+        return res.status(400).json({ success: false, message: "User already exists" });
       }
 
+      const userName = name || fullName || email.split('@')[0];
       const user = await User.create({ 
         email, 
         password, 
-        name: name || fullName || email.split('@')[0] 
+        name: userName
       });
 
       res.json({
         success: true,
         token: "mock-token-" + user._id,
         user: {
-          id: user._id,
+          id: user._id.toString(),
           email: user.email,
-          name: user.name,
+          name: user.name || userName,
           isGoogleCalendarConnected: false,
         }
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("/api/auth/signup error", error);
-      res.status(500).json({ message: "Failed to create account" });
+      res.status(500).json({ success: false, message: error.message || "Failed to create account" });
     }
   });
 
@@ -61,29 +62,29 @@ export async function registerRoutes(
 
     if (!email || !password) {
       console.log("[Login Route] Error: Missing email or password");
-      return res.status(400).json({ message: "Email and password are required" });
+      return res.status(400).json({ success: false, message: "Email and password are required" });
     }
 
     try {
       let user = await User.findOne({ email }).exec();
       
       if (!user || user.password !== password) {
-         return res.status(401).json({ message: "Invalid credentials" });
+         return res.status(401).json({ success: false, message: "Invalid credentials" });
       }
 
       res.json({
         success: true,
         token: "mock-token-" + user._id,
         user: {
-          id: user._id,
+          id: user._id.toString(),
           email: user.email,
-          name: user.name,
+          name: user.name || email.split('@')[0],
           isGoogleCalendarConnected: !!user.googleCalendarTokens?.access_token,
         }
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("/api/auth/login error", error);
-      res.status(500).json({ message: "Failed to login" });
+      res.status(500).json({ success: false, message: error.message || "Failed to login" });
     }
   });
 

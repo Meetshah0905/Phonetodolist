@@ -17,6 +17,7 @@ export interface IReminderSettings {
 export interface IUser extends Document {
   email: string;
   password: string;
+  name?: string;
   googleCalendarTokens?: {
     access_token?: string;
     refresh_token?: string;
@@ -71,6 +72,7 @@ const UserSchema = new Schema<IUser>(
   {
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
+    name: { type: String },
     googleCalendarTokens: {
       access_token: String,
       refresh_token: String,

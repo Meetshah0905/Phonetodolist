@@ -8,6 +8,17 @@ import { connectToDatabase } from "./db";
 const app = express();
 const httpServer = createServer(app);
 
+// CORS middleware
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 // Simplified middleware configuration for stability
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
