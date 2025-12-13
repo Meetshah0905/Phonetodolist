@@ -2,15 +2,15 @@
 
 @import "tw-animate-css";
 
-/* Force Tailwind to ONLY scan:
+/* Explicitly tell Tailwind what to scan.
 
-  1. The client folder (../ points to 'client' from 'client/src')
-
-  2. The shared folder (../../shared points to 'shared' from 'client/src')
+  This disables the auto-scanner that is crashing your build.
 
 */
 
-@source "../"; 
+@source "../src";
+
+@source "../index.html";
 
 @source "../../shared";
 
