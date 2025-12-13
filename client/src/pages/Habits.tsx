@@ -265,11 +265,11 @@ function HabitSection({ title, time, habits, isOpen, onToggle, onToggleHabit, on
                                     )}
                                 </div>
                                 
-                                <div className="absolute right-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-[#1C1C1E] pl-2">
+                                <div className="absolute right-0 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-[#1C1C1E] pl-2">
                                      <Button 
                                         variant="ghost" 
                                         size="icon" 
-                                        className="h-8 w-8 text-[#8E8E93] hover:text-white"
+                                        className="h-8 w-8 text-[#8E8E93] hover:text-white active:scale-95"
                                         onClick={(e) => { e.stopPropagation(); onEdit(habit); }}
                                     >
                                         <Pencil size={14} />
@@ -277,7 +277,7 @@ function HabitSection({ title, time, habits, isOpen, onToggle, onToggleHabit, on
                                     <Button 
                                         variant="ghost" 
                                         size="icon" 
-                                        className="h-8 w-8 text-[#8E8E93] hover:text-[#FF453A]"
+                                        className="h-8 w-8 text-[#8E8E93] hover:text-[#FF453A] active:scale-95"
                                         onClick={(e) => onDelete(habit.id, e)}
                                     >
                                         <Trash2 size={14} />
