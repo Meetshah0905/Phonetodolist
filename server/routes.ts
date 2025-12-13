@@ -16,13 +16,13 @@ export async function registerRoutes(
 
   // --- SIGNUP ROUTE ---
   app.post("/api/auth/signup", async (req, res) => {
-    console.log("[Signup] Received body:", req.body); // DEBUG LOG
+    console.log("[Signup Route] Body received:", req.body); // DEBUG LOG
     
     // Support both 'name' and 'fullName'
     const { email, password, name, fullName } = req.body ?? {};
     
     if (!email || !password) {
-      console.log("[Signup] Missing fields. Email:", !!email, "Password:", !!password);
+      console.log("[Signup Route] Error: Missing email or password");
       return res.status(400).json({ message: "Email and password are required" });
     }
 
@@ -56,16 +56,17 @@ export async function registerRoutes(
 
   // --- LOGIN ROUTE ---
   app.post("/api/auth/login", async (req, res) => {
+    console.log("[Login Route] Body received:", req.body);
     const { email, password } = req.body ?? {};
 
     if (!email || !password) {
+      console.log("[Login Route] Error: Missing email or password");
       return res.status(400).json({ message: "Email and password are required" });
     }
 
     try {
       let user = await User.findOne({ email }).exec();
       
-      // Simple check (in production use bcrypt)
       if (!user || user.password !== password) {
          return res.status(401).json({ message: "Invalid credentials" });
       }

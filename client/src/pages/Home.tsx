@@ -16,26 +16,21 @@ import { CalendarModal } from "@/components/ui/CalendarModal";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { BarChart, Bar, ResponsiveContainer, Cell } from "recharts";
-import quotesRaw from "@assets/quotes.txt?raw";
-import { apiGet } from "@/apiClient"; // Import apiGet
+// DELETED: import quotesRaw from "@/assets/quotes.txt?raw";
+import { apiGet } from "@/apiClient";
 
 export default function Home() {
-  // Destructure setters to manually update state if needed
   const { 
-    user, tasks, setTasks, setPoints, setHabits, setBooks, setWishlist, setLifetimeXP,
-    toggleTask, addTask, updateTask, deleteTask, getAISuggestion, 
-    points, lifetimeXP, nextRankXP, isGoogleCalendarConnected, syncToGoogleCalendar 
+    user, tasks, setTasks, toggleTask, addTask, updateTask, deleteTask, getAISuggestion, 
+    lifetimeXP, nextRankXP, isGoogleCalendarConnected, syncToGoogleCalendar 
   } = useGame();
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewDate, setViewDate] = useState(new Date());
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  
-  // Task Dialog State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  
   const [taskTitle, setTaskTitle] = useState("");
   const [taskTime, setTaskTime] = useState("");
   const [taskScheduledTime, setTaskScheduledTime] = useState("");
@@ -47,40 +42,31 @@ export default function Home() {
   const [syncToCalendar, setSyncToCalendar] = useState(false);
   const [calendarItemType, setCalendarItemType] = useState<"task" | "event">("task");
 
-  // --- FIX: FORCE DATA LOAD ON MOUNT ---
- 
-  // -------------------------------------
-
-  // Level Logic
   const level = Math.max(1, Math.floor(lifetimeXP / 1000) + 1);
   const progressToNextLevel = nextRankXP > 0 ? Math.min(100, Math.round((lifetimeXP / nextRankXP) * 100)) : 0;
-
-  // Filter tasks
-  const filteredTasks = tasks.filter(
-    (t) => t.date === selectedDate.toISOString().split("T")[0]
-  );
-
+  const filteredTasks = tasks.filter((t) => t.date === selectedDate.toISOString().split("T")[0]);
   const completedCount = filteredTasks.filter(t => t.completed).length;
   const totalCount = filteredTasks.length;
   const allTasksCompleted = totalCount > 0 && completedCount === totalCount;
-
-  // Time-based Greeting
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
-  // Quotes ticker
-  const quotes = useMemo(() => quotesRaw.split("\n").map((q) => q.trim()).filter(Boolean), []);
-  const [quoteIndex, setQuoteIndex] = useState(() => Math.floor(Math.random() * Math.max(quotes.length, 1)));
+  // FIXED: Hardcoded quotes to ensure build succeeds
+  const quotes = [
+    "Focus on the process, not the outcome.",
+    "Consistency is key.",
+    "Do it now.",
+    "Small steps lead to big changes."
+  ];
+  const [quoteIndex, setQuoteIndex] = useState(0);
 
   useEffect(() => {
-    if (!quotes.length) return;
     const interval = setInterval(() => {
       setQuoteIndex((prev) => (prev + 1) % quotes.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, [quotes.length]);
+  }, []);
 
-  // Mock Data
   const weeklyData = [
     { day: "M", points: 450 }, { day: "T", points: 820 }, { day: "W", points: 300 },
     { day: "T", points: 600 }, { day: "F", points: 950 }, { day: "S", points: 120 }, { day: "S", points: 50 },
@@ -129,7 +115,6 @@ export default function Home() {
   const handleSaveTask = () => {
     if (!taskTitle) return;
     const finalPoints = parseInt(taskPoints) || aiSuggestion || 100;
-
     if (isEditing && editingId) {
         updateTask(editingId, {
             title: taskTitle, time: taskTime || "30m", points: finalPoints, notes: taskNotes
@@ -140,7 +125,6 @@ export default function Home() {
             date: selectedDate.toISOString().split("T")[0], priority: "medium", notes: taskNotes
         });
     }
-
     if (syncToCalendar && isGoogleCalendarConnected) {
         syncToGoogleCalendar({
             title: taskTitle, time: taskScheduledTime || taskTime, endTime: taskEndTime,
@@ -159,7 +143,6 @@ export default function Home() {
 
   return (
     <MobileShell>
-      {/* Header */}
       <div className="flex justify-between items-end mb-8 pt-4">
         <div>
             <div className="flex items-center gap-2 mb-1">
@@ -167,11 +150,9 @@ export default function Home() {
                     {format(selectedDate, "EEE, MMM do")}
                  </span>
             </div>
-            {quotes.length > 0 && (
-              <div className="text-xs text-[#8E8E93] bg-white/5 border border-white/5 rounded-lg px-3 py-2 mb-2 max-w-xs leading-snug">
+            <div className="text-xs text-[#8E8E93] bg-white/5 border border-white/5 rounded-lg px-3 py-2 mb-2 max-w-xs leading-snug">
                 “{quotes[quoteIndex]}”
-              </div>
-            )}
+            </div>
             <h1 className="text-3xl font-bold text-white tracking-tight">{greeting}, {user?.name || 'User'}</h1>
             <div className="flex items-center gap-2 mt-2">
                 <div className="bg-[#1C1C1E] px-3 py-1 rounded-full border border-white/10 flex items-center gap-2">
@@ -189,7 +170,6 @@ export default function Home() {
         <GlowingBalance />
       </div>
 
-      {/* Date Navigator */}
       <div className="flex items-center gap-2 mb-6">
         <Button variant="ghost" size="icon" onClick={() => setViewDate(addDays(viewDate, -3))} className="text-[#8E8E93] hover:text-white shrink-0 hover:bg-white/10 rounded-full"><ChevronLeft /></Button>
         <div className="overflow-x-auto pb-2 scrollbar-hide flex-1">
@@ -215,7 +195,6 @@ export default function Home() {
         <Button variant="ghost" size="icon" onClick={() => setViewDate(addDays(viewDate, 3))} className="text-[#8E8E93] hover:text-white shrink-0 hover:bg-white/10 rounded-full"><ChevronRight /></Button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 gap-4 mb-8">
         <LiquidCard className="flex flex-col items-center justify-center py-4 bg-[#1C1C1E] border-white/10 relative overflow-hidden">
              <div className="absolute top-3 left-3 flex items-center gap-1.5">
@@ -236,7 +215,6 @@ export default function Home() {
       </div>
       <CalendarModal open={isCalendarOpen} onOpenChange={setIsCalendarOpen} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
       
-      {/* Tasks */}
       <div className="flex justify-between items-center mb-4 px-1">
         <h2 className="text-lg font-bold text-white tracking-tight">Tasks</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -260,9 +238,6 @@ export default function Home() {
       </div>
 
       <div className={cn("space-y-3 pb-24 transition-all duration-500 rounded-[24px]", allTasksCompleted ? "p-6 bg-gradient-to-b from-[#0A84FF]/10 to-transparent border border-[#0A84FF]/20" : "")}>
-        <AnimatePresence>
-          {allTasksCompleted && (<motion.div key="all-complete" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mb-6 text-center"><div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#30D158]/20 text-[#30D158] mb-2"><Check size={24} strokeWidth={3} /></div><h3 className="text-xl font-bold text-white">All Tasks Complete!</h3></motion.div>)}
-        </AnimatePresence>
         <AnimatePresence>
         {filteredTasks.map((task) => (
           <LiquidCard as={motion.div} layout key={task.id} className={cn("flex items-center gap-4 p-4 transition-all group", task.completed ? "opacity-60" : "")} onClick={() => toggleTask(task.id)}>

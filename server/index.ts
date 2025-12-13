@@ -8,11 +8,11 @@ import { connectToDatabase } from "./db";
 const app = express();
 const httpServer = createServer(app);
 
-// Simplified middleware configuration
+// Simplified middleware configuration for stability
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Debugging middleware: This will show you EXACTLY what the server receives
+// Debugging middleware: This logs exactly what the server receives
 app.use((req, res, next) => {
   if (req.method === 'POST') {
     console.log(`[DEBUG] Incoming POST to ${req.path}`);
