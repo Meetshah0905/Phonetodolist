@@ -21,9 +21,12 @@ export default defineConfig({
       "@assets": path.resolve(__dirname, "attached_assets"),
     },
   },
-  // Remove the css: { postcss: ... } block if you want, 
-  // keeping it is also fine if plugins is empty.
- 
+  // DELETE THE ENTIRE 'css' BLOCK BELOW
+  // css: {
+  //   postcss: {
+  //     plugins: [],
+  //   },
+  // },
   root: path.resolve(__dirname, "client"),
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
