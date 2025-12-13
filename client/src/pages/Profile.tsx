@@ -1,15 +1,18 @@
 import { MobileShell } from "@/components/layout/MobileShell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { useGame } from "@/lib/store";
-import { Settings, User, Mail, Calendar } from "lucide-react";
+import { useGame, RANKS } from "@/lib/store"; // Imported RANKS
+import { User, Mail, Calendar, Trophy, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 export default function Profile() {
   const { user, rank, lifetimeXP, isGoogleCalendarConnected, connectGoogleCalendar, disconnectGoogleCalendar } = useGame();
+
+  // Find index of current rank
+  const currentRankIndex = RANKS.findIndex(r => r.name === rank);
 
   return (
     <MobileShell>
@@ -25,7 +28,7 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-6 pb-20">
         <div className="space-y-4">
             <h3 className="text-[#8E8E93] text-xs font-bold uppercase tracking-wider ml-1">Account</h3>
             
@@ -42,7 +45,6 @@ export default function Profile() {
                     <div className="w-10 h-10 rounded-full bg-[#2C2C2E] flex items-center justify-center text-white"><Mail size={20} /></div>
                     <div className="flex-1">
                         <Label className="text-xs text-[#8E8E93]">Email</Label>
-                        {/* Hidden/Fake Email for UI aesthetics */}
                         <div className="text-white font-medium">meet@phonetodolist.com</div>
                     </div>
                 </div>
@@ -62,6 +64,37 @@ export default function Profile() {
                     </div>
                     <Switch checked={isGoogleCalendarConnected} onCheckedChange={(c) => c ? connectGoogleCalendar() : disconnectGoogleCalendar()} />
                 </div>
+            </div>
+        </div>
+
+        {/* NEW SECTION: ALL LEVELS */}
+        <div className="space-y-4">
+            <h3 className="text-[#8E8E93] text-xs font-bold uppercase tracking-wider ml-1">Level Progression</h3>
+            <div className="bg-[#1C1C1E] rounded-[20px] border border-white/5 overflow-hidden">
+                {RANKS.map((r, index) => {
+                    const isUnlocked = index <= currentRankIndex;
+                    const isCurrent = index === currentRankIndex;
+                    
+                    return (
+                        <div key={r.name}>
+                            <div className={cn("p-4 flex items-center justify-between", isCurrent ? "bg-[#0A84FF]/10" : "")}>
+                                <div className="flex items-center gap-3">
+                                    <div className={cn("w-8 h-8 rounded-full flex items-center justify-center border", 
+                                        isUnlocked ? "bg-[#0A84FF] border-[#0A84FF] text-white" : "bg-transparent border-[#2C2C2E] text-[#505055]"
+                                    )}>
+                                        {isUnlocked ? <Trophy size={14} fill="currentColor" /> : <Lock size={14} />}
+                                    </div>
+                                    <div>
+                                        <div className={cn("font-bold text-sm", isUnlocked ? "text-white" : "text-[#505055]")}>{r.name}</div>
+                                        <div className="text-[10px] text-[#8E8E93]">{r.minXP} XP Required</div>
+                                    </div>
+                                </div>
+                                {isCurrent && <span className="text-[10px] font-bold bg-[#0A84FF] text-white px-2 py-0.5 rounded-full">CURRENT</span>}
+                            </div>
+                            {index < RANKS.length - 1 && <Separator className="bg-white/5" />}
+                        </div>
+                    );
+                })}
             </div>
         </div>
       </div>

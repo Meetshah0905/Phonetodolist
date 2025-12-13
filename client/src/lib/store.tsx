@@ -1,4 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+// RESTORED: Sound imports
+import completionSound from "@assets/soundeffect.MP3";
+import wishlistSound from "@assets/wishlistsound.MP3";
 import { toast } from "@/hooks/use-toast";
 import { apiGet, apiPost } from "@/apiClient";
 
@@ -7,6 +10,35 @@ function generateObjectId() {
   const timestamp = (new Date().getTime() / 1000 | 0).toString(16);
   return timestamp + 'xxxxxxxxxxxxxxxx'.replace(/[x]/g, () => (Math.random() * 16 | 0).toString(16)).toLowerCase();
 }
+
+// --- EXPORTED RANKS FOR PROFILE PAGE ---
+export const RANKS = [
+  { name: "Iron 1", minXP: 0 },
+  { name: "Iron 2", minXP: 2000 },
+  { name: "Iron 3", minXP: 2500 },
+  { name: "Bronze 1", minXP: 3000 },
+  { name: "Bronze 2", minXP: 4000 },
+  { name: "Bronze 3", minXP: 5500 },
+  { name: "Silver 1", minXP: 7500 },
+  { name: "Silver 2", minXP: 10000 },
+  { name: "Silver 3", minXP: 15000 },
+  { name: "Gold 1", minXP: 22000 },
+  { name: "Gold 2", minXP: 32000 },
+  { name: "Gold 3", minXP: 50000 },
+  { name: "Platinum 1", minXP: 75000 },
+  { name: "Platinum 2", minXP: 110000 },
+  { name: "Platinum 3", minXP: 160000 },
+  { name: "Diamond 1", minXP: 230000 },
+  { name: "Diamond 2", minXP: 330000 },
+  { name: "Diamond 3", minXP: 470000 },
+  { name: "Ascendant 1", minXP: 650000 },
+  { name: "Ascendant 2", minXP: 750000 },
+  { name: "Ascendant 3", minXP: 850000 },
+  { name: "Immortal 1", minXP: 920000 },
+  { name: "Immortal 2", minXP: 950000 },
+  { name: "Immortal 3", minXP: 970000 },
+  { name: "Radiant", minXP: 985000 },
+];
 
 type Task = {
   id: string;
@@ -117,26 +149,15 @@ const INITIAL_WISHLIST: WishlistItem[] = [
 ];
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
-  // AUTO-LOGIN LOGIC: Create "Meet Shah" user immediately
   const [user, setUser] = useState<{ name: string; email: string; id: string } | null>(() => {
     const saved = localStorage.getItem("user");
     if (saved) {
         const parsed = JSON.parse(saved);
-        // Ensure name is updated even for existing local users
-        if (parsed.name === "Guest") {
-            parsed.name = "Meet Shah";
-            // Do NOT change ID to preserve data
-        }
+        if (parsed.name === "Guest") { parsed.name = "Meet Shah"; }
         return parsed;
     }
-    
-    // Auto-create Meet Shah user
     const newId = generateObjectId();
-    const newUser = {
-      name: "Meet Shah",
-      email: `meet_${newId}@phonetodolist.com`, // Unique hidden email
-      id: newId 
-    };
+    const newUser = { name: "Meet Shah", email: `meet_${newId}@phonetodolist.com`, id: newId };
     localStorage.setItem("user", JSON.stringify(newUser));
     return newUser;
   });
@@ -151,20 +172,45 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [lifetimeXP, setLifetimeXP] = useState(0); 
   const [levelUp, setLevelUp] = useState({ show: false, newRank: "" });
   
+  // RESTORED: Audio References
+  const completionAudioRef = useRef<HTMLAudioElement | null>(null);
+  const wishlistAudioRef = useRef<HTMLAudioElement | null>(null);
+  
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isHydratingRef = useRef(false);
 
-  // --- Persistence helpers ---
+  // RESTORED: Play Sound Functions
+  const playCompletionSound = () => {
+    if (typeof window === "undefined") return;
+    try {
+      if (!completionAudioRef.current) {
+        completionAudioRef.current = new Audio(completionSound);
+        completionAudioRef.current.volume = 0.4;
+      }
+      completionAudioRef.current.currentTime = 0;
+      completionAudioRef.current.play().catch(() => {});
+    } catch (e) { console.log("Audio play failed", e); }
+  };
+
+  const playWishlistSound = () => {
+    if (typeof window === "undefined") return;
+    try {
+      if (!wishlistAudioRef.current) {
+        wishlistAudioRef.current = new Audio(wishlistSound);
+        wishlistAudioRef.current.volume = 0.4;
+      }
+      wishlistAudioRef.current.currentTime = 0;
+      wishlistAudioRef.current.play().catch(() => {});
+    } catch (e) { console.log("Audio play failed", e); }
+  };
+
   const getToken = () => localStorage.getItem("token") || "meet-token";
 
   const hydrateFromServer = async (userId: string) => {
     try {
       isHydratingRef.current = true;
       const res = await apiGet(`/api/state?userId=${userId}`, getToken());
-      if (!res.ok) {
-         setIsInitialized(true);
-         return;
-      }
+      if (!res.ok) { setIsInitialized(true); return; }
       const data = await res.json();
       
       if (typeof data.points === 'number') setPoints(data.points);
@@ -195,13 +241,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         { userId: user.id, points, lifetimeXP, tasks, habits, books, wishlist },
         getToken(),
       ).catch((err) => console.error("Persist state failed", err));
-    }, 1000);
+    }, 1000); 
   };
 
   useEffect(() => {
-    if (user?.id) {
-      hydrateFromServer(user.id);
-    }
+    if (user?.id) { hydrateFromServer(user.id); }
   }, [user?.id]);
 
   useEffect(() => {
@@ -220,7 +264,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
-    // RESTART/RESET instead of Logging out
     if (confirm("This will reset your local data. Are you sure?")) {
         localStorage.clear();
         window.location.reload();
@@ -228,10 +271,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   };
 
   const getRankData = (xp: number) => {
-      if (xp < 2000) return { name: "Iron 1", nextXP: 2000 };
-      if (xp < 5000) return { name: "Bronze 1", nextXP: 5000 };
-      if (xp < 10000) return { name: "Silver 1", nextXP: 10000 };
-      if (xp < 30000) return { name: "Gold 1", nextXP: 30000 };
+      for (let i = 0; i < RANKS.length - 1; i++) {
+          if (xp >= RANKS[i].minXP && xp < RANKS[i+1].minXP) {
+              return { name: RANKS[i].name, nextXP: RANKS[i+1].minXP };
+          }
+      }
       return { name: "Radiant", nextXP: Infinity };
   };
 
@@ -264,14 +308,21 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setJournalEntries(prev => [...prev, newEntry]);
   }
 
-  // Simplified CRUD
+  // --- UPDATED CRUD TO PLAY SOUNDS ---
   const addTask = (task: Omit<Task, "id" | "completed">) => setTasks(prev => [...prev, { ...task, id: Math.random().toString(), completed: false }]);
   const updateTask = (id: string, updates: Partial<Task>) => setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
   const deleteTask = (id: string) => setTasks(prev => prev.filter(t => t.id !== id));
+  
   const toggleTask = (id: string) => setTasks(prev => prev.map(t => {
       if (t.id === id) {
-          t.completed ? deductPoints(t.points) : addPoints(t.points);
-          return { ...t, completed: !t.completed };
+          const isCompleting = !t.completed;
+          if (isCompleting) {
+              addPoints(t.points);
+              playCompletionSound(); // Sound on completion
+          } else {
+              deductPoints(t.points);
+          }
+          return { ...t, completed: isCompleting };
       }
       return t;
   }));
@@ -279,10 +330,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const addHabit = (h: Omit<Habit, "id" | "completed">) => setHabits(prev => [...prev, { ...h, id: Math.random().toString(), completed: false }]);
   const updateHabit = (id: string, u: Partial<Habit>) => setHabits(prev => prev.map(h => h.id === id ? { ...h, ...u } : h));
   const deleteHabit = (id: string) => setHabits(prev => prev.filter(h => h.id !== id));
+  
   const toggleHabit = (id: string) => setHabits(prev => prev.map(h => {
       if (h.id === id) {
-          h.completed ? deductPoints(h.points) : addPoints(h.points);
-          return { ...h, completed: !h.completed };
+          const isCompleting = !h.completed;
+          if (isCompleting) {
+              addPoints(h.points);
+              playCompletionSound(); // Sound on completion
+          } else {
+              deductPoints(h.points);
+          }
+          return { ...h, completed: isCompleting };
       }
       return h;
   }));
@@ -300,6 +358,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (item && points >= item.cost) {
           deductPoints(item.cost);
           setWishlist(prev => prev.map(i => i.id === id ? { ...i, redeemed: true } : i));
+          playWishlistSound(); // Wishlist Sound
       }
   };
 
