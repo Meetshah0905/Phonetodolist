@@ -1,7 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
-// DELETED: Sound imports removed to prevent build failure
 import { toast } from "@/hooks/use-toast";
 import { apiGet, apiPost } from "@/apiClient";
+
+// --- Helper to generate a fake valid MongoDB ObjectID ---
+function generateObjectId() {
+  const timestamp = (new Date().getTime() / 1000 | 0).toString(16);
+  return timestamp + 'xxxxxxxxxxxxxxxx'.replace(/[x]/g, () => (Math.random() * 16 | 0).toString(16)).toLowerCase();
+}
 
 type Task = {
   id: string;
@@ -85,7 +90,7 @@ type GameState = {
   redeemItem: (id: string) => void;
   getAISuggestion: (title: string) => Promise<number>;
   saveJournalEntry: (text: string, audioBlob?: Blob) => Promise<void>;
-  user: { name: string; email: string; id?: string } | null;
+  user: { name: string; email: string; id: string } | null;
   login: (email: string, name: string, id?: string) => void;
   logout: () => void;
   isGoogleCalendarConnected: boolean;
@@ -96,30 +101,36 @@ type GameState = {
 
 const GameContext = createContext<GameState | undefined>(undefined);
 
+// Initial Data Constants
 const INITIAL_TASKS: Task[] = [
   { id: "1", title: "Morning Run (5km)", time: "30m", points: 250, completed: false, date: new Date().toISOString().split('T')[0], priority: "high" },
   { id: "2", title: "Deep Work Session", time: "2h", points: 500, completed: false, date: new Date().toISOString().split('T')[0], priority: "medium" },
-  { id: "3", title: "Review PRs", time: "45m", points: 150, completed: true, date: new Date().toISOString().split('T')[0], priority: "medium" },
 ];
 
 const INITIAL_HABITS: Habit[] = [
   { id: "1", title: "Wake up at 6:30", points: 10, completed: false, type: "morning", resetTime: "06:30 - 07:10", mustDo: true },
-  { id: "2", title: "Black coffee", points: 5, completed: false, type: "morning", resetTime: "06:30 - 07:10", mustDo: false },
-  { id: "3", title: "Read 5 pages", points: 15, completed: false, type: "morning", resetTime: "06:30 - 07:10", mustDo: false },
+  { id: "2", title: "Hydrate", points: 5, completed: false, type: "morning", resetTime: "06:30 - 07:10", mustDo: false },
 ];
 
-const INITIAL_BOOKS: Book[] = [
-  { id: "1", title: "Dune", author: "Frank Herbert", totalPoints: 1000, status: "reading", deadline: "2025-12-31", progress: 45, totalPages: 800, currentPage: 360 },
-];
-
+const INITIAL_BOOKS: Book[] = [];
 const INITIAL_WISHLIST: WishlistItem[] = [
-  { id: "1", name: "iPhone 17 Pro", cost: 15000, redeemed: false },
+  { id: "1", name: "Reward 1", cost: 1000, redeemed: false },
 ];
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<{ name: string; email: string; id?: string } | null>(() => {
+  // AUTO-LOGIN LOGIC: If no user, create a Guest user immediately
+  const [user, setUser] = useState<{ name: string; email: string; id: string } | null>(() => {
     const saved = localStorage.getItem("user");
-    return saved ? JSON.parse(saved) : null;
+    if (saved) return JSON.parse(saved);
+    
+    // Auto-create guest user
+    const guestUser = {
+      name: "Guest",
+      email: "guest@example.com",
+      id: generateObjectId() 
+    };
+    localStorage.setItem("user", JSON.stringify(guestUser));
+    return guestUser;
   });
   
   const [isInitialized, setIsInitialized] = useState(false);
@@ -128,23 +139,26 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [habits, setHabits] = useState<Habit[]>(INITIAL_HABITS);
   const [books, setBooks] = useState<Book[]>(INITIAL_BOOKS);
   const [wishlist, setWishlist] = useState<WishlistItem[]>(INITIAL_WISHLIST);
-  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([
-      { id: "1", text: "Initial reflection", date: new Date().toISOString() }
-  ]);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [lifetimeXP, setLifetimeXP] = useState(0); 
   const [levelUp, setLevelUp] = useState({ show: false, newRank: "" });
   
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isHydratingRef = useRef(false);
 
-  // Persistence helpers
-  const getToken = () => localStorage.getItem("token") || undefined;
+  // --- Persistence helpers ---
+  const getToken = () => localStorage.getItem("token") || "guest-token";
 
   const hydrateFromServer = async (userId: string) => {
     try {
       isHydratingRef.current = true;
       const res = await apiGet(`/api/state?userId=${userId}`, getToken());
-      if (!res.ok) throw new Error("Failed to load state");
+      if (!res.ok) {
+         console.log("Creating new state for guest...");
+         // If failed (404), we just stick with initial state and it will save on next update
+         setIsInitialized(true);
+         return;
+      }
       const data = await res.json();
       
       if (typeof data.points === 'number') setPoints(data.points);
@@ -157,6 +171,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setIsInitialized(true);
     } catch (err) {
       console.error("Hydration error", err);
+      setIsInitialized(true); // Allow saving even if hydration failed
     } finally {
       isHydratingRef.current = false;
     }
@@ -174,20 +189,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         { userId: user.id, points, lifetimeXP, tasks, habits, books, wishlist },
         getToken(),
       ).catch((err) => console.error("Persist state failed", err));
-    }, 1000); 
+    }, 1000);
   };
 
   useEffect(() => {
     if (user?.id) {
       hydrateFromServer(user.id);
-    } else {
-      setPoints(0);
-      setLifetimeXP(0);
-      setTasks(INITIAL_TASKS);
-      setHabits(INITIAL_HABITS);
-      setBooks(INITIAL_BOOKS);
-      setWishlist(INITIAL_WISHLIST);
-      setIsInitialized(false);
     }
   }, [user?.id]);
 
@@ -195,81 +202,28 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     persistState();
   }, [points, lifetimeXP, tasks, habits, books, wishlist]);
 
-  // Google Calendar Integration
+  // Google Calendar Integration (Stubbed for Guest)
   const [isGoogleCalendarConnected, setIsGoogleCalendarConnected] = useState(false);
-
-  useEffect(() => {
-    if (!user?.email || !user?.id) return;
-    apiPost("/api/auth/login", { email: user.email, password: "check-status" }, getToken())
-      .then(res => res.json())
-      .then(data => {
-        if (data.isGoogleCalendarConnected !== undefined) setIsGoogleCalendarConnected(data.isGoogleCalendarConnected);
-      })
-      .catch(() => {});
-  }, [user?.email, user?.id]);
-
-  const connectGoogleCalendar = async () => {
-    if (!user?.id) {
-      toast({ title: "Error", description: "Please log in first", variant: "destructive" });
-      return;
-    }
-    try {
-      const res = await apiGet(`/api/auth/google/connect?userId=${user.id}`, getToken());
-      const data = await res.json();
-      if (!res.ok || data?.error) {
-        toast({ title: "Connection Error", description: data.message || "Could not connect.", variant: "destructive" });
-        return;
-      }
-      if (data.authUrl) window.location.href = data.authUrl;
-    } catch (error) {
-      toast({ title: "Connection Failed", description: "Network error", variant: "destructive" });
-    }
-  };
-
-  const disconnectGoogleCalendar = async () => {
-    if (!user?.id) return;
-    try {
-      const res = await apiPost("/api/auth/google/disconnect", { userId: user.id }, getToken());
-      if (!res.ok) throw new Error("Disconnect failed");
-      setIsGoogleCalendarConnected(false);
-      toast({ title: "Disconnected", description: "Google Calendar unlinked." });
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to disconnect", variant: "destructive" });
-    }
-  };
-
-  const syncToGoogleCalendar = async (item: { title: string; time?: string; endTime?: string; date?: string; type?: string; notes?: string }) => {
-    if (!isGoogleCalendarConnected || !user?.id) {
-        toast({ title: "Connect Google Calendar", description: "Link your account first.", variant: "destructive" });
-        return;
-    }
-    try {
-      const res = await apiPost(
-        "/api/calendar/sync",
-        { userId: user.id, ...item, type: item.type || "event" },
-        getToken(),
-      );
-      if (!res.ok) throw new Error("Failed to sync");
-      toast({ title: "Synced", description: "Added to Google Calendar", className: "bg-[#0A84FF] text-white border-none" });
-    } catch (error) {
-      toast({ title: "Sync Failed", description: "Unable to sync", variant: "destructive" });
-    }
-  };
+  const connectGoogleCalendar = () => toast({ title: "Guest Mode", description: "Sign in required for Google Calendar" });
+  const disconnectGoogleCalendar = () => {};
+  const syncToGoogleCalendar = () => toast({ title: "Guest Mode", description: "Sign in required for Google Calendar" });
 
   const login = (email: string, name: string, id?: string) => {
-    const userData = { email, name, id };
+    // This function acts as a reset/update now
+    const userData = { email, name, id: id || generateObjectId() };
     setUser(userData);
     localStorage.setItem("user", JSON.stringify(userData));
   };
 
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
+    // Reset to new guest instead of null
+    const guestUser = { name: "Guest", email: "guest@example.com", id: generateObjectId() };
+    setUser(guestUser);
+    localStorage.setItem("user", JSON.stringify(guestUser));
     setPoints(0);
-    setLifetimeXP(0);
     setTasks(INITIAL_TASKS);
     setIsInitialized(false);
+    window.location.reload();
   };
 
   const getRankData = (xp: number) => {
@@ -300,9 +254,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   };
 
   const getAISuggestion = async (title: string): Promise<number> => {
-    return new Promise((resolve) => {
-        setTimeout(() => resolve(150), 1000); 
-    });
+    return new Promise((resolve) => { setTimeout(() => resolve(150), 500); });
   };
 
   const saveJournalEntry = async (text: string, audioBlob?: Blob) => {
@@ -311,7 +263,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setJournalEntries(prev => [...prev, newEntry]);
   }
 
-  // Simplified CRUD
+  // Simplified CRUD operations
   const addTask = (task: Omit<Task, "id" | "completed">) => setTasks(prev => [...prev, { ...task, id: Math.random().toString(), completed: false }]);
   const updateTask = (id: string, updates: Partial<Task>) => setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
   const deleteTask = (id: string) => setTasks(prev => prev.filter(t => t.id !== id));
