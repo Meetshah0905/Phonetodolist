@@ -2,9 +2,13 @@
 
 @import "tw-animate-css";
 
-/* Explicitly tell Tailwind what to scan.
+/* Correct @source configuration:
 
-  This disables the auto-scanner that is crashing your build.
+  1. Scan the 'src' folder (where your React components are)
+
+  2. Scan 'index.html' (one level up)
+
+  3. Scan the 'shared' folder (two levels up)
 
 */
 
