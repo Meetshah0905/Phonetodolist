@@ -168,10 +168,9 @@ export default function Home() {
                 <div className="bg-[#1C1C1E] px-3 py-1 rounded-full border border-white/10 flex items-center gap-2">
                     <span className="text-[10px] font-bold text-[#8E8E93] uppercase">Lvl {level}</span>
                     <div className="w-16 h-1.5 bg-[#2C2C2E] rounded-full overflow-hidden">
-                        <motion.div 
-                            className="h-full bg-gradient-to-r from-[#0A84FF] to-[#0A84FF]/50"
-                            initial={{ width: 0 }}
-                            animate={{ width: `${progressToNextLevel}%` }}
+                        <div 
+                            className="h-full bg-gradient-to-r from-[#0A84FF] to-[#0A84FF]/50 transition-all duration-500"
+                            style={{ width: `${progressToNextLevel}%` }}
                         />
                     </div>
                 </div>
