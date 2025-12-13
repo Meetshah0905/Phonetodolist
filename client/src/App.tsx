@@ -1,6 +1,7 @@
 import { Switch, Route, Redirect } from "wouter";
 import { GameProvider } from "@/lib/store";
 import { Toaster } from "@/components/ui/toaster";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Home from "@/pages/Home";
 import Habits from "@/pages/Habits";
 import Library from "@/pages/Library";
@@ -35,10 +36,12 @@ function Router() {
 
 function App() {
   return (
-    <GameProvider>
-      <Router />
-      <Toaster />
-    </GameProvider>
+    <ErrorBoundary>
+      <GameProvider>
+        <Router />
+        <Toaster />
+      </GameProvider>
+    </ErrorBoundary>
   );
 }
 
