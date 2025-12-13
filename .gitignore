@@ -6,4 +6,9 @@ vite.config.ts.*
 *.tar.gz
 .env
 server/.env
-.env.local 
+.env.local
+# PostCSS and Tailwind config files (not needed with @tailwindcss/vite)
+postcss.config.js
+postcss.config.ts
+tailwind.config.js
+tailwind.config.ts
