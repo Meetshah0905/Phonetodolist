@@ -1,11 +1,17 @@
 @import "tailwindcss";
+
 @import "tw-animate-css";
 
 /* Force Tailwind to ONLY scan:
-  1. The current directory (client/src)
-  2. The shared directory (../../shared)
+
+  1. The client folder (../ points to 'client' from 'client/src')
+
+  2. The shared folder (../../shared points to 'shared' from 'client/src')
+
 */
-@source ".";
+
+@source "../"; 
+
 @source "../../shared";
 
 @custom-variant dark (&:is(.dark *));
