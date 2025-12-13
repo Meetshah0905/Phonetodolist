@@ -16,7 +16,7 @@ import { CalendarModal } from "@/components/ui/CalendarModal";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { BarChart, Bar, ResponsiveContainer, Cell } from "recharts";
-import quotesRaw from "@/assets/quotes.txt?raw";
+import quotesRaw from "@assets/quotes.txt?raw";
 import { apiGet } from "@/apiClient"; // Import apiGet
 
 export default function Home() {
