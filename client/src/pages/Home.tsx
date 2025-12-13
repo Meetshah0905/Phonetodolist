@@ -16,7 +16,7 @@ import { CalendarModal } from "@/components/ui/CalendarModal";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { BarChart, Bar, ResponsiveContainer, Cell } from "recharts";
-// DELETED: import quotesRaw from "@/assets/quotes.txt?raw";
+import quotesRaw from "@assets/quotes.txt?raw";
 import { apiGet } from "@/apiClient";
 
 export default function Home() {
@@ -51,21 +51,32 @@ export default function Home() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
-  // FIXED: Hardcoded quotes to ensure build succeeds
-  const quotes = [
-    "Focus on the process, not the outcome.",
-    "Consistency is key.",
-    "Do it now.",
-    "Small steps lead to big changes."
-  ];
+  // Load quotes from attached_assets/quotes.txt file
+  const quotes = useMemo(() => {
+    return quotesRaw
+      .split("\n")
+      .map((q) => q.trim())
+      .filter(Boolean); // Remove empty lines
+  }, []);
+  
+  // Start with a random quote each time the component mounts (when navigating to this page)
   const [quoteIndex, setQuoteIndex] = useState(0);
 
+  // Set random initial quote when component mounts or quotes change
   useEffect(() => {
+    if (quotes.length > 0) {
+      setQuoteIndex(Math.floor(Math.random() * quotes.length));
+    }
+  }, []); // Only run once on mount
+
+  // Rotate quotes every 5 seconds
+  useEffect(() => {
+    if (quotes.length === 0) return;
     const interval = setInterval(() => {
       setQuoteIndex((prev) => (prev + 1) % quotes.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [quotes.length]);
 
   const weeklyData = [
     { day: "M", points: 450 }, { day: "T", points: 820 }, { day: "W", points: 300 },
