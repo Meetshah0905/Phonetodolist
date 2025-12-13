@@ -2,8 +2,7 @@ import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
 import { rm, readFile } from "fs/promises";
 
-// server deps to bundle to reduce openat(2) syscalls
-// which helps cold start times
+// Dependencies to EXCLUDE from the server bundle (keep them as node_modules imports)
 const allowlist = [
   "@google/generative-ai",
   "axios",
@@ -15,8 +14,10 @@ const allowlist = [
   "express",
   "express-rate-limit",
   "express-session",
+  "googleapis",           // <--- ADDED THIS (Critical for Google Calendar)
   "jsonwebtoken",
   "memorystore",
+  "mongoose",             // <--- ADDED THIS (Critical for MongoDB)
   "multer",
   "nanoid",
   "nodemailer",
@@ -44,7 +45,10 @@ async function buildAll() {
     ...Object.keys(pkg.dependencies || {}),
     ...Object.keys(pkg.devDependencies || {}),
   ];
-  const externals = allDeps.filter((dep) => !allowlist.includes(dep));
+  
+  // Create a list of external dependencies (modules that shouldn't be bundled)
+  // We exclude ANY dependency that is in package.json to be safe for backend
+  const externals = allDeps; 
 
   await esbuild({
     entryPoints: ["server/index.ts"],
@@ -56,7 +60,7 @@ async function buildAll() {
       "process.env.NODE_ENV": '"production"',
     },
     minify: true,
-    external: externals,
+    external: externals, // Use the full list of dependencies as externals
     logLevel: "info",
   });
 }
