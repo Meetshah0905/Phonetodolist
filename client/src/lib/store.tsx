@@ -101,7 +101,6 @@ type GameState = {
 
 const GameContext = createContext<GameState | undefined>(undefined);
 
-// Initial Data Constants
 const INITIAL_TASKS: Task[] = [
   { id: "1", title: "Morning Run (5km)", time: "30m", points: 250, completed: false, date: new Date().toISOString().split('T')[0], priority: "high" },
   { id: "2", title: "Deep Work Session", time: "2h", points: 500, completed: false, date: new Date().toISOString().split('T')[0], priority: "medium" },
@@ -118,19 +117,28 @@ const INITIAL_WISHLIST: WishlistItem[] = [
 ];
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
-  // AUTO-LOGIN LOGIC: If no user, create a Guest user immediately
+  // AUTO-LOGIN LOGIC: Create "Meet Shah" user immediately
   const [user, setUser] = useState<{ name: string; email: string; id: string } | null>(() => {
     const saved = localStorage.getItem("user");
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+        const parsed = JSON.parse(saved);
+        // Ensure name is updated even for existing local users
+        if (parsed.name === "Guest") {
+            parsed.name = "Meet Shah";
+            // Do NOT change ID to preserve data
+        }
+        return parsed;
+    }
     
-    // Auto-create guest user
-    const guestUser = {
-      name: "Guest",
-      email: "guest@example.com",
-      id: generateObjectId() 
+    // Auto-create Meet Shah user
+    const newId = generateObjectId();
+    const newUser = {
+      name: "Meet Shah",
+      email: `meet_${newId}@phonetodolist.com`, // Unique hidden email
+      id: newId 
     };
-    localStorage.setItem("user", JSON.stringify(guestUser));
-    return guestUser;
+    localStorage.setItem("user", JSON.stringify(newUser));
+    return newUser;
   });
   
   const [isInitialized, setIsInitialized] = useState(false);
@@ -147,15 +155,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const isHydratingRef = useRef(false);
 
   // --- Persistence helpers ---
-  const getToken = () => localStorage.getItem("token") || "guest-token";
+  const getToken = () => localStorage.getItem("token") || "meet-token";
 
   const hydrateFromServer = async (userId: string) => {
     try {
       isHydratingRef.current = true;
       const res = await apiGet(`/api/state?userId=${userId}`, getToken());
       if (!res.ok) {
-         console.log("Creating new state for guest...");
-         // If failed (404), we just stick with initial state and it will save on next update
          setIsInitialized(true);
          return;
       }
@@ -171,7 +177,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setIsInitialized(true);
     } catch (err) {
       console.error("Hydration error", err);
-      setIsInitialized(true); // Allow saving even if hydration failed
+      setIsInitialized(true);
     } finally {
       isHydratingRef.current = false;
     }
@@ -202,28 +208,23 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     persistState();
   }, [points, lifetimeXP, tasks, habits, books, wishlist]);
 
-  // Google Calendar Integration (Stubbed for Guest)
   const [isGoogleCalendarConnected, setIsGoogleCalendarConnected] = useState(false);
-  const connectGoogleCalendar = () => toast({ title: "Guest Mode", description: "Sign in required for Google Calendar" });
+  const connectGoogleCalendar = () => toast({ title: "Feature Restricted", description: "Google Calendar requires a full Google account." });
   const disconnectGoogleCalendar = () => {};
-  const syncToGoogleCalendar = () => toast({ title: "Guest Mode", description: "Sign in required for Google Calendar" });
+  const syncToGoogleCalendar = () => toast({ title: "Feature Restricted", description: "Google Calendar requires a full Google account." });
 
   const login = (email: string, name: string, id?: string) => {
-    // This function acts as a reset/update now
     const userData = { email, name, id: id || generateObjectId() };
     setUser(userData);
     localStorage.setItem("user", JSON.stringify(userData));
   };
 
   const logout = () => {
-    // Reset to new guest instead of null
-    const guestUser = { name: "Guest", email: "guest@example.com", id: generateObjectId() };
-    setUser(guestUser);
-    localStorage.setItem("user", JSON.stringify(guestUser));
-    setPoints(0);
-    setTasks(INITIAL_TASKS);
-    setIsInitialized(false);
-    window.location.reload();
+    // RESTART/RESET instead of Logging out
+    if (confirm("This will reset your local data. Are you sure?")) {
+        localStorage.clear();
+        window.location.reload();
+    }
   };
 
   const getRankData = (xp: number) => {
@@ -263,7 +264,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setJournalEntries(prev => [...prev, newEntry]);
   }
 
-  // Simplified CRUD operations
+  // Simplified CRUD
   const addTask = (task: Omit<Task, "id" | "completed">) => setTasks(prev => [...prev, { ...task, id: Math.random().toString(), completed: false }]);
   const updateTask = (id: string, updates: Partial<Task>) => setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
   const deleteTask = (id: string) => setTasks(prev => prev.filter(t => t.id !== id));

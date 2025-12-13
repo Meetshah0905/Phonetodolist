@@ -1,228 +1,69 @@
-import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
 import { MobileShell } from "@/components/layout/MobileShell";
-import { useGame } from "@/lib/store";
-import { LiquidCard } from "@/components/ui/LiquidCard";
-import { cn } from "@/lib/utils";
-import { Trophy, Shield, Zap, Target, Star, LogOut, Calendar, Bell, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { useGame } from "@/lib/store";
+import { Settings, User, Mail, Calendar } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { apiPost } from "@/apiClient";
-
-const RANKS = [
-    { name: "Iron 1", min: 2000, color: "text-gray-400", bg: "from-gray-500/20" },
-    { name: "Iron 2", min: 2500, color: "text-gray-400", bg: "from-gray-500/20" },
-    { name: "Iron 3", min: 3000, color: "text-gray-400", bg: "from-gray-500/20" },
-    { name: "Bronze 1", min: 4000, color: "text-[#cd7f32]", bg: "from-[#cd7f32]/20" },
-    { name: "Bronze 2", min: 5500, color: "text-[#cd7f32]", bg: "from-[#cd7f32]/20" },
-    { name: "Bronze 3", min: 7500, color: "text-[#cd7f32]", bg: "from-[#cd7f32]/20" },
-    { name: "Silver 1", min: 10000, color: "text-slate-300", bg: "from-slate-300/20" },
-    { name: "Silver 2", min: 15000, color: "text-slate-300", bg: "from-slate-300/20" },
-    { name: "Silver 3", min: 22000, color: "text-slate-300", bg: "from-slate-300/20" },
-    { name: "Gold 1", min: 32000, color: "text-yellow-400", bg: "from-yellow-400/20" },
-    { name: "Gold 2", min: 50000, color: "text-yellow-400", bg: "from-yellow-400/20" },
-    { name: "Gold 3", min: 75000, color: "text-yellow-400", bg: "from-yellow-400/20" },
-    { name: "Platinum 1", min: 110000, color: "text-cyan-400", bg: "from-cyan-400/20" },
-    { name: "Platinum 2", min: 160000, color: "text-cyan-400", bg: "from-cyan-400/20" },
-    { name: "Platinum 3", min: 230000, color: "text-cyan-400", bg: "from-cyan-400/20" },
-    { name: "Diamond 1", min: 330000, color: "text-purple-400", bg: "from-purple-400/20" },
-    { name: "Diamond 2", min: 470000, color: "text-purple-400", bg: "from-purple-400/20" },
-    { name: "Diamond 3", min: 650000, color: "text-purple-400", bg: "from-purple-400/20" },
-    { name: "Ascendant 1", min: 750000, color: "text-emerald-400", bg: "from-emerald-400/20" },
-    { name: "Ascendant 2", min: 850000, color: "text-emerald-400", bg: "from-emerald-400/20" },
-    { name: "Ascendant 3", min: 920000, color: "text-emerald-400", bg: "from-emerald-400/20" },
-    { name: "Immortal 1", min: 950000, color: "text-red-500", bg: "from-red-500/20" },
-    { name: "Immortal 2", min: 970000, color: "text-red-500", bg: "from-red-500/20" },
-    { name: "Immortal 3", min: 985000, color: "text-red-500", bg: "from-red-500/20" },
-    { name: "Radiant", min: 1000000, color: "text-yellow-100", bg: "from-yellow-100/20" },
-];
+import { Separator } from "@/components/ui/separator";
 
 export default function Profile() {
-  const { lifetimeXP, rank, nextRankXP, logout, user, isGoogleCalendarConnected, connectGoogleCalendar, disconnectGoogleCalendar } = useGame();
-  const [, setLocation] = useLocation();
-  
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("connected") === "true") {
-      // Clear the URL parameter
-      window.history.replaceState({}, "", "/profile");
-      
-      // Update connection status in store
-      if (user?.id) {
-        const token = localStorage.getItem("token") || undefined;
-        apiPost("/api/auth/login", { email: user.email, password: "check" }, token)
-          .then(res => res.json())
-          .then(data => {
-            if (data.isGoogleCalendarConnected) {
-              // Refresh the page to show updated status
-              window.location.reload();
-            }
-          });
-      }
-    }
-  }, [user]);
-  
-  const currentRankIdx = RANKS.findIndex(r => r.name === rank);
-  const progress = nextRankXP === Infinity 
-      ? 100 
-      : Math.min(100, (lifetimeXP / nextRankXP) * 100);
-
-  const handleLogout = () => {
-    logout();
-    setLocation("/login");
-  };
+  const { user, rank, lifetimeXP, isGoogleCalendarConnected, connectGoogleCalendar, disconnectGoogleCalendar } = useGame();
 
   return (
     <MobileShell>
-      <div className="flex justify-between items-center mb-6 pt-2 px-1">
-        <div>
-            <h2 className="text-2xl font-bold text-white tracking-tight mb-1">Agent Profile</h2>
-            <p className="text-[#8E8E93] text-sm">{user?.email || "Guest Agent"}</p>
-        </div>
-        <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleLogout}
-            className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
-        >
-            <LogOut size={16} className="mr-2" />
-            Logout
-        </Button>
-      </div>
-
-      {/* Main Rank Card */}
-      <LiquidCard className="mb-6 flex flex-col items-center justify-center py-10 relative overflow-hidden">
-        <div className={cn(
-            "absolute inset-0 bg-gradient-to-b opacity-20 pointer-events-none",
-            RANKS[currentRankIdx]?.bg || "from-gray-500/20"
-        )} />
-        
-        <div className="relative z-10 flex flex-col items-center">
-            {/* Rank Icon Placeholder (CSS based) */}
-            <div className={cn(
-                "w-32 h-32 rounded-full border-4 flex items-center justify-center mb-4 shadow-[0_0_50px_rgba(0,0,0,0.5)]",
-                RANKS[currentRankIdx]?.color.replace('text-', 'border-') || "border-gray-400"
-            )}>
-                <Trophy size={64} className={RANKS[currentRankIdx]?.color} />
-            </div>
-            
-            <h1 className={cn(
-                "text-4xl font-black uppercase tracking-widest mb-2 drop-shadow-lg",
-                RANKS[currentRankIdx]?.color
-            )}>
-                {rank}
-            </h1>
-            
-            <div className="text-[#8E8E93] font-mono text-sm mb-6">
-                LIFETIME XP: <span className="text-white font-bold">{lifetimeXP.toLocaleString()}</span>
-            </div>
-
-            {/* XP Bar */}
-            <div className="w-full max-w-[200px] space-y-2">
-                <div className="flex justify-between text-[10px] uppercase font-bold text-[#8E8E93]">
-                    <span>Current</span>
-                    <span>Next Rank</span>
-                </div>
-                <div className="h-2 bg-[#2C2C2E] rounded-full overflow-hidden border border-white/5">
-                    <div 
-                        className={cn("h-full transition-all duration-500", RANKS[currentRankIdx]?.color.replace('text-', 'bg-'))} 
-                        style={{ width: `${progress}%` }}
-                    />
-                </div>
-                <div className="text-center text-[10px] text-[#8E8E93]">
-                    {nextRankXP === Infinity ? "MAX RANK" : `${(nextRankXP - lifetimeXP).toLocaleString()} XP to go`}
-                </div>
-            </div>
-        </div>
-      </LiquidCard>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <div className="bg-[#1C1C1E] rounded-[20px] p-4 border border-white/10 flex flex-col items-center gap-2">
-            <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
-                <Target size={20} />
-            </div>
-            <div className="text-2xl font-bold text-white">85%</div>
-            <div className="text-[10px] font-bold text-[#8E8E93] uppercase">Task Completion</div>
-        </div>
-        <div className="bg-[#1C1C1E] rounded-[20px] p-4 border border-white/10 flex flex-col items-center gap-2">
-            <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-500">
-                <Zap size={20} />
-            </div>
-            <div className="text-2xl font-bold text-white">12</div>
-            <div className="text-[10px] font-bold text-[#8E8E93] uppercase">Day Streak</div>
+      <div className="flex flex-col items-center mb-8 pt-8">
+        <Avatar className="w-24 h-24 mb-4 border-4 border-[#1C1C1E] shadow-2xl">
+          <AvatarImage src={`https://api.dicebear.com/7.x/notionists/svg?seed=${user?.name || "Meet"}`} />
+          <AvatarFallback className="bg-[#2C2C2E] text-white text-2xl">MS</AvatarFallback>
+        </Avatar>
+        <h1 className="text-2xl font-bold text-white mb-1">{user?.name || "Meet Shah"}</h1>
+        <div className="flex items-center gap-2">
+            <span className="text-[#0A84FF] font-bold text-sm bg-[#0A84FF]/10 px-3 py-1 rounded-full border border-[#0A84FF]/20">{rank}</span>
+            <span className="text-[#8E8E93] text-sm font-medium">{lifetimeXP} XP</span>
         </div>
       </div>
 
-      {/* Integrations & Settings */}
-      <div className="space-y-4 mb-8">
-        <h3 className="text-sm font-bold text-[#8E8E93] uppercase pl-2">Integrations & Settings</h3>
-        
-        {/* Google Calendar */}
-        <div className="bg-[#1C1C1E] rounded-[20px] p-4 border border-white/10">
-            <div className="flex items-center justify-between mb-2">
+      <div className="space-y-6">
+        <div className="space-y-4">
+            <h3 className="text-[#8E8E93] text-xs font-bold uppercase tracking-wider ml-1">Account</h3>
+            
+            <div className="bg-[#1C1C1E] rounded-[20px] p-4 border border-white/5 space-y-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
-                        <Calendar size={20} />
-                    </div>
-                    <div>
-                        <div className="font-bold text-white text-sm">Google Calendar & Tasks</div>
-                        <div className="text-[10px] text-[#8E8E93]">{isGoogleCalendarConnected ? "Connected" : "Sync tasks & habits"}</div>
+                    <div className="w-10 h-10 rounded-full bg-[#2C2C2E] flex items-center justify-center text-white"><User size={20} /></div>
+                    <div className="flex-1">
+                        <Label className="text-xs text-[#8E8E93]">Name</Label>
+                        <Input value={user?.name || "Meet Shah"} readOnly className="bg-transparent border-none p-0 h-auto text-white font-medium focus-visible:ring-0" />
                     </div>
                 </div>
-                <Switch 
-                    checked={isGoogleCalendarConnected} 
-                    onCheckedChange={(checked) => checked ? connectGoogleCalendar() : disconnectGoogleCalendar()} 
-                />
+                <Separator className="bg-white/5" />
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#2C2C2E] flex items-center justify-center text-white"><Mail size={20} /></div>
+                    <div className="flex-1">
+                        <Label className="text-xs text-[#8E8E93]">Email</Label>
+                        {/* Hidden/Fake Email for UI aesthetics */}
+                        <div className="text-white font-medium">meet@phonetodolist.com</div>
+                    </div>
+                </div>
             </div>
-            {isGoogleCalendarConnected && (
-                <div className="mt-3 pt-3 border-t border-white/5">
-                    <div className="text-[10px] text-yellow-400 bg-yellow-400/10 px-2 py-1.5 rounded-lg">
-                        ⚠️ To use Google Tasks, please disconnect and reconnect to grant new permissions
-                    </div>
-                </div>
-            )}
         </div>
 
-        {/* Task Notifications */}
-        <div className="bg-[#1C1C1E] rounded-[20px] p-4 border border-white/10 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center text-yellow-500">
-                    <Bell size={20} />
-                </div>
-                <div>
-                    <div className="font-bold text-white text-sm">Task Reminders</div>
-                    <div className="text-[10px] text-[#8E8E93]">Notify for incomplete tasks</div>
+        <div className="space-y-4">
+            <h3 className="text-[#8E8E93] text-xs font-bold uppercase tracking-wider ml-1">Integrations</h3>
+            <div className="bg-[#1C1C1E] rounded-[20px] p-4 border border-white/5">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-[#EA4335]/20 flex items-center justify-center text-[#EA4335]"><Calendar size={20} /></div>
+                        <div>
+                            <div className="text-white font-medium">Google Calendar</div>
+                            <div className="text-xs text-[#8E8E93]">{isGoogleCalendarConnected ? "Connected" : "Not connected"}</div>
+                        </div>
+                    </div>
+                    <Switch checked={isGoogleCalendarConnected} onCheckedChange={(c) => c ? connectGoogleCalendar() : disconnectGoogleCalendar()} />
                 </div>
             </div>
-            <Switch defaultChecked />
         </div>
-      </div>
-
-      {/* Rank Progression */}
-      <div className="space-y-2 mb-8">
-        <h3 className="text-sm font-bold text-[#8E8E93] uppercase pl-2 mb-4">Rank Progression</h3>
-        {RANKS.map((r, i) => (
-            <div key={r.name} className={cn(
-                "flex items-center gap-4 p-3 rounded-[16px] border transition-all",
-                r.name === rank 
-                    ? "bg-[#2C2C2E] border-white/20" 
-                    : "bg-transparent border-transparent opacity-50"
-            )}>
-                <div className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center border",
-                    r.name === rank ? r.color.replace('text-', 'border-') : "border-white/10 bg-white/5"
-                )}>
-                    {i < currentRankIdx ? <Shield size={16} className={r.color} /> : <Star size={16} className={r.name === rank ? r.color : "text-white/20"} />}
-                </div>
-                <div className="flex-1">
-                    <div className={cn("font-bold text-sm", r.name === rank ? "text-white" : "text-[#8E8E93]")}>{r.name}</div>
-                    <div className="text-[10px] text-[#8E8E93]">{r.min.toLocaleString()} XP</div>
-                </div>
-                {i < currentRankIdx && <div className="text-[#30D158] text-[10px] font-bold">UNLOCKED</div>}
-                {i === currentRankIdx && <div className="text-blue-500 text-[10px] font-bold">CURRENT</div>}
-            </div>
-        ))}
       </div>
     </MobileShell>
   );
