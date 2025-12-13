@@ -14,11 +14,15 @@ export async function registerRoutes(
     res.json({ mongoConnected: state === 1, state });
   });
 
-  // --- SIGNUP ROUTE (This was missing) ---
+  // --- SIGNUP ROUTE ---
   app.post("/api/auth/signup", async (req, res) => {
+    console.log("[Signup] Received body:", req.body); // DEBUG LOG
+    
+    // Support both 'name' and 'fullName'
     const { email, password, name, fullName } = req.body ?? {};
-
+    
     if (!email || !password) {
+      console.log("[Signup] Missing fields. Email:", !!email, "Password:", !!password);
       return res.status(400).json({ message: "Email and password are required" });
     }
 
@@ -34,7 +38,6 @@ export async function registerRoutes(
         name: name || fullName || email.split('@')[0] 
       });
 
-      // Send response in format expected by frontend
       res.json({
         success: true,
         token: "mock-token-" + user._id,
@@ -51,7 +54,7 @@ export async function registerRoutes(
     }
   });
 
-  // --- LOGIN ROUTE (Updated to match frontend) ---
+  // --- LOGIN ROUTE ---
   app.post("/api/auth/login", async (req, res) => {
     const { email, password } = req.body ?? {};
 
@@ -61,11 +64,9 @@ export async function registerRoutes(
 
     try {
       let user = await User.findOne({ email }).exec();
-
-      // Simple password check (In production use hashing)
+      
+      // Simple check (in production use bcrypt)
       if (!user || user.password !== password) {
-         // Create user if not exists for easier testing (Optional)
-         // user = await User.create({ email, password });
          return res.status(401).json({ message: "Invalid credentials" });
       }
 
@@ -243,7 +244,5 @@ export async function registerRoutes(
     }
   });
   
-  // (Include other journal routes like 'update', 'delete' if needed similarly)
-
   return httpServer;
 }
