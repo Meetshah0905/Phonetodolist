@@ -23,12 +23,13 @@ export default function Login() {
 
     try {
       const data = await loginRequest(email, password);
+      
       if (!data.success) {
-        throw new Error("Login failed");
+        throw new Error(data.message || "Login failed");
       }
 
       localStorage.setItem("token", data.token);
-      login(data.user.email || email, data.user.displayName || "Agent", data.user.id);
+      login(data.user.email || email, data.user.name || "Agent", data.user.id);
       
       // Set calendar connection status if provided
       if (data.isGoogleCalendarConnected !== undefined) {

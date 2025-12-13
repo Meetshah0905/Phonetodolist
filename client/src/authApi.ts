@@ -6,6 +6,12 @@ export async function signup(fullName: string, email: string, password: string) 
     email,
     password,
   });
+  
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: "Signup failed" }));
+    throw new Error(error.message || "Signup failed");
+  }
+  
   return res.json();
 }
 
@@ -14,6 +20,12 @@ export async function login(email: string, password: string) {
     email,
     password,
   });
+  
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: "Login failed" }));
+    throw new Error(error.message || "Login failed");
+  }
+  
   return res.json();
 }
 

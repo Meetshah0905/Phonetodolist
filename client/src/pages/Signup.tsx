@@ -24,12 +24,13 @@ export default function Signup() {
 
     try {
       const res = await signupRequest(name, email, password);
+      
       if (!res.success) {
-        throw new Error("Signup failed");
+        throw new Error(res.message || "Signup failed");
       }
 
       localStorage.setItem("token", res.token);
-      login(res.user.email || email, res.user.displayName || name || "Agent", res.user.id);
+      login(res.user.email || email, res.user.name || name || "Agent", res.user.id);
       toast({
         title: "Account created!",
         description: "Welcome to your new journey. You start with 0 points.",
