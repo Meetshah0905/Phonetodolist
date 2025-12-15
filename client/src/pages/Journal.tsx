@@ -185,6 +185,21 @@ export default function Journal() {
     setEditText("");
   };
 
+  const displayedEntries = useMemo(() => {
+    const remote = backendEntries ?? [];
+    const localOnly = journalEntries.filter(local => !remote.some(entry => entry.id === local.id));
+    const normalized = [
+      ...remote,
+      ...localOnly.map((entry) => ({
+        id: entry.id,
+        text: entry.text,
+        date: entry.date,
+        hasAudio: entry.hasAudio ?? false,
+      })),
+    ];
+    return normalized.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [backendEntries, journalEntries]);
+
   // Calendar Logic (Last 7 Days)
   const days = Array.from({ length: 7 }).map((_, i) => {
   const displayedEntries = useMemo(() => {
