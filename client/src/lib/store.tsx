@@ -90,6 +90,16 @@ type JournalEntry = {
     audioUrl?: string;
 };
 
+type StoredState = {
+  points: number;
+  tasks: Task[];
+  habits: Habit[];
+  books: Book[];
+  wishlist: WishlistItem[];
+  journalEntries: JournalEntry[];
+  lifetimeXP: number;
+};
+
 type GameState = {
   points: number;
   tasks: Task[];
@@ -149,6 +159,20 @@ const INITIAL_WISHLIST: WishlistItem[] = [
 ];
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
+  const loadSavedState = (): StoredState | null => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("gameState");
+      if (!raw) return null;
+      return JSON.parse(raw) as StoredState;
+    } catch (err) {
+      console.warn("Failed to parse saved state", err);
+      return null;
+    }
+  };
+
+  const [savedState] = useState<StoredState | null>(() => loadSavedState());
+
   const [user, setUser] = useState<{ name: string; email: string; id: string } | null>(() => {
     const saved = localStorage.getItem("user");
     if (saved) {
@@ -163,13 +187,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   });
   
   const [isInitialized, setIsInitialized] = useState(false);
-  const [points, setPoints] = useState(0);
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
-  const [habits, setHabits] = useState<Habit[]>(INITIAL_HABITS);
-  const [books, setBooks] = useState<Book[]>(INITIAL_BOOKS);
-  const [wishlist, setWishlist] = useState<WishlistItem[]>(INITIAL_WISHLIST);
-  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
-  const [lifetimeXP, setLifetimeXP] = useState(0); 
+  const [points, setPoints] = useState(savedState?.points ?? 0);
+  const [tasks, setTasks] = useState<Task[]>(savedState?.tasks ?? INITIAL_TASKS);
+  const [habits, setHabits] = useState<Habit[]>(savedState?.habits ?? INITIAL_HABITS);
+  const [books, setBooks] = useState<Book[]>(savedState?.books ?? INITIAL_BOOKS);
+  const [wishlist, setWishlist] = useState<WishlistItem[]>(savedState?.wishlist ?? INITIAL_WISHLIST);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>(savedState?.journalEntries ?? []);
+  const [lifetimeXP, setLifetimeXP] = useState(savedState?.lifetimeXP ?? 0); 
   const [levelUp, setLevelUp] = useState({ show: false, newRank: "" });
   
   // RESTORED: Audio References
@@ -247,6 +271,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     if (isHydratingRef.current) return;
     if (!isInitialized) return; 
 
+    // Save locally for offline resilience
+    const localPayload: StoredState = { points, lifetimeXP, tasks, habits, books, wishlist, journalEntries };
+    localStorage.setItem("gameState", JSON.stringify(localPayload));
+
+    // And also push to backend (best effort)
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       apiPost(
@@ -263,7 +292,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     persistState();
-  }, [points, lifetimeXP, tasks, habits, books, wishlist]);
+  }, [points, lifetimeXP, tasks, habits, books, wishlist, journalEntries]);
 
   const [isGoogleCalendarConnected, setIsGoogleCalendarConnected] = useState(false);
   const connectGoogleCalendar = () => toast({ title: "Feature Restricted", description: "Google Calendar requires a full Google account." });
