@@ -276,9 +276,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     // Save locally for offline resilience
     const localPayload: StoredState = { points, lifetimeXP, tasks, habits, books, wishlist, journalEntries };
-<<<<<<< Current (Your changes)
-    localStorage.setItem("gameState", JSON.stringify(localPayload));
-=======
     try {
       localStorage.setItem("gameState", JSON.stringify(localPayload));
       localSaveErrorRef.current = false;
@@ -293,7 +290,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
       console.error("Local save failed", err);
     }
->>>>>>> Incoming (Background Agent changes)
 
     // And also push to backend (best effort)
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
