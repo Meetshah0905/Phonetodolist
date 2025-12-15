@@ -31,12 +31,6 @@ export default function Login() {
       localStorage.setItem("token", data.token);
       login(data.user.email || email, data.user.name || "Agent", data.user.id);
       
-      // Set calendar connection status if provided
-      if (data.isGoogleCalendarConnected !== undefined) {
-        // The store will handle this through a context update if needed
-        // For now, the Profile page will check this when it loads
-      }
-      
       toast({
         title: "Welcome back!",
         description: "Successfully logged in.",

@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { LiquidCard } from "@/components/ui/LiquidCard";
 import { useGame } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Mic, StopCircle, ExternalLink, Check, Bell, Calendar, Volume2, Pencil, Trash2 } from "lucide-react";
+import { Mic, StopCircle, ExternalLink, Check, Bell, Volume2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { format, subDays, isSameDay } from "date-fns";
@@ -13,13 +13,12 @@ import { apiGet, apiPost } from "@/apiClient";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
 
 export default function Journal() {
-  const { saveJournalEntry, journalEntries, user, isGoogleCalendarConnected } = useGame();
+  const { saveJournalEntry, journalEntries, user } = useGame();
   const [entry, setEntry] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [reminderTime, setReminderTime] = useState("23:11");
-  const [syncToCalendar, setSyncToCalendar] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
   const [backendEntries, setBackendEntries] = useState<Array<{id: string; text: string; date: string; hasAudio: boolean}>>([]);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
@@ -50,7 +49,6 @@ export default function Journal() {
           if (data.settings) {
             setReminderEnabled(data.settings.enabled);
             setReminderTime(data.settings.time);
-            setSyncToCalendar(data.settings.syncToCalendar);
           }
         })
         .catch(err => console.error("Failed to load reminder settings", err));
@@ -109,7 +107,6 @@ export default function Journal() {
           userId: user.id,
           enabled: reminderEnabled,
           time: reminderTime,
-          syncToCalendar,
         },
         token,
       );
@@ -117,7 +114,7 @@ export default function Journal() {
 
       toast({ 
         title: "Reminder Updated", 
-        description: `Daily reminder ${reminderEnabled ? 'enabled' : 'disabled'} at ${reminderTime}${syncToCalendar ? ' (synced to Google Calendar)' : ''}`,
+        description: `Daily reminder ${reminderEnabled ? 'enabled' : 'disabled'} at ${reminderTime}`,
       });
     } catch (error) {
       toast({ 
@@ -190,6 +187,20 @@ export default function Journal() {
 
   // Calendar Logic (Last 7 Days)
   const days = Array.from({ length: 7 }).map((_, i) => {
+  const displayedEntries = useMemo(() => {
+    const remote = backendEntries ?? [];
+    const localOnly = journalEntries.filter(local => !remote.some(entry => entry.id === local.id));
+    const normalized = [
+      ...remote,
+      ...localOnly.map((entry) => ({
+        id: entry.id,
+        text: entry.text,
+        date: entry.date,
+        hasAudio: entry.hasAudio ?? false,
+      })),
+    ];
+    return normalized.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [backendEntries, journalEntries]);
       const date = subDays(new Date(), 6 - i);
       // Check if entry exists for this date
       const hasEntry = journalEntries.some(e => isSameDay(new Date(e.date), date));
@@ -403,20 +414,6 @@ export default function Journal() {
           </Button>
         </div>
 
-        {isGoogleCalendarConnected && (
-          <div className="flex items-center justify-between py-2 border-t border-white/5 pt-3">
-            <div className="flex items-center gap-2">
-              <Calendar size={14} className="text-[#EA4335]" />
-              <span className="text-xs text-white">Sync to Google Calendar</span>
-            </div>
-            <Switch 
-              checked={syncToCalendar} 
-              onCheckedChange={setSyncToCalendar}
-              className="data-[state=checked]:bg-[#EA4335]"
-            />
-          </div>
-        )}
-
         <Button
           onClick={handleReminderUpdate}
           size="sm"
@@ -493,23 +490,30 @@ export default function Journal() {
       </LiquidCard>
 
       {/* Previous Journal Entries */}
-      {backendEntries.length > 0 && (
+      {displayedEntries.length > 0 && (
         <div className="mt-6 space-y-4">
           <h3 className="text-lg font-bold text-white px-1">Previous Entries</h3>
-          {backendEntries.slice().reverse().map((entry) => (
+          {displayedEntries.map((entry) => {
+            const isLocalOnly = !backendEntries.some((remote) => remote.id === entry.id);
+            return (
             <div key={entry.id} className="bg-[#1C1C1E] border border-white/10 rounded-2xl p-4">
               <div className="flex justify-between items-start mb-2">
                 <span className="text-xs text-[#8E8E93] font-semibold">
                   {format(new Date(entry.date), "MMM d, yyyy 'at' h:mm a")}
                 </span>
                 <div className="flex items-center gap-2">
-                  {entry.hasAudio && (
+                  {isLocalOnly && (
+                    <span className="text-[10px] text-[#FF9F0A] font-bold uppercase bg-[#FF9F0A]/15 border border-[#FF9F0A]/30 px-2 py-0.5 rounded-md">
+                      Local
+                    </span>
+                  )}
+                  {entry.hasAudio && !isLocalOnly && (
                     <div className="flex items-center gap-1 text-[#0A84FF] text-xs">
                       <Volume2 size={12} />
                       <span>Audio</span>
                     </div>
                   )}
-                  {editingEntryId !== entry.id && (
+                  {!isLocalOnly && editingEntryId !== entry.id && (
                     <>
                       <Button
                         size="icon"
@@ -561,7 +565,7 @@ export default function Journal() {
                 <p className="text-white text-sm leading-relaxed mb-3">{entry.text}</p>
               )}
               
-              {entry.hasAudio && user?.id && (
+              {entry.hasAudio && user?.id && !isLocalOnly && (
                 <audio 
                   controls 
                   className="w-full h-10 mt-3"
@@ -575,7 +579,7 @@ export default function Journal() {
                 </audio>
               )}
             </div>
-          ))}
+          )})}
         </div>
       )}
     </MobileShell>

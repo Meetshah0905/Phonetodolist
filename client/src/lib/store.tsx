@@ -137,10 +137,6 @@ type GameState = {
   user: { name: string; email: string; id: string } | null;
   login: (email: string, name: string, id?: string) => void;
   logout: () => void;
-  isGoogleCalendarConnected: boolean;
-  connectGoogleCalendar: () => void;
-  disconnectGoogleCalendar: () => void;
-  syncToGoogleCalendar: (item: { title: string; time?: string; endTime?: string; date?: string; type?: string; notes?: string }) => void;
 };
 
 const GameContext = createContext<GameState | undefined>(undefined);
@@ -280,15 +276,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("gameState", JSON.stringify(localPayload));
       localSaveErrorRef.current = false;
     } catch (err: any) {
-      if (!localSaveErrorRef.current) {
-        localSaveErrorRef.current = true;
-        toast({
-          title: "Storage almost full",
-          description: "We could not save everything locally. Try deleting large images/files or free some space.",
-          variant: "destructive",
-        });
-      }
-      console.error("Local save failed", err);
+      localSaveErrorRef.current = true;
+      console.warn("Local save failed", err);
     }
 
     // And also push to backend (best effort)
@@ -309,11 +298,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     persistState();
   }, [points, lifetimeXP, tasks, habits, books, wishlist, journalEntries]);
-
-  const [isGoogleCalendarConnected, setIsGoogleCalendarConnected] = useState(false);
-  const connectGoogleCalendar = () => toast({ title: "Feature Restricted", description: "Google Calendar requires a full Google account." });
-  const disconnectGoogleCalendar = () => {};
-  const syncToGoogleCalendar = () => toast({ title: "Feature Restricted", description: "Google Calendar requires a full Google account." });
 
   const login = (email: string, name: string, id?: string) => {
     const userData = { email, name, id: id || generateObjectId() };
@@ -467,7 +451,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         addBook, updateBook, deleteBook, updateBookProgress,
         addWishlistItem, updateWishlistItem, deleteWishlistItem, redeemItem,
         getAISuggestion, saveJournalEntry, user, login, logout,
-        isGoogleCalendarConnected, connectGoogleCalendar, disconnectGoogleCalendar, syncToGoogleCalendar
     }}>
       {children}
     </GameContext.Provider>

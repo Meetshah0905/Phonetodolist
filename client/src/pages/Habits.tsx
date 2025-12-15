@@ -2,7 +2,7 @@ import { useState } from "react";
 import { MobileShell } from "@/components/layout/MobileShell";
 import { useGame } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { Check, ChevronDown, ChevronUp, Plus, Pencil, Trash2, Calendar } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Plus, Pencil, Trash2 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 
 export default function Habits() {
-  const { habits, toggleHabit, addHabit, updateHabit, deleteHabit, reorderHabit, isGoogleCalendarConnected, syncToGoogleCalendar } = useGame();
+  const { habits, toggleHabit, addHabit, updateHabit, deleteHabit, reorderHabit } = useGame();
   const [openSections, setOpenSections] = useState(["morning", "afternoon", "evening", "night"]);
   
   const morningHabits = habits.filter(h => h.type === "morning");
@@ -29,7 +29,6 @@ export default function Habits() {
   const [habitType, setHabitType] = useState<"morning" | "afternoon" | "evening" | "night">("morning");
   const [habitPoints, setHabitPoints] = useState("10");
   const [habitMustDo, setHabitMustDo] = useState(false);
-  const [syncToCalendar, setSyncToCalendar] = useState(false);
 
   const handleOpenAdd = () => {
     setIsEditing(false);
@@ -37,7 +36,6 @@ export default function Habits() {
     setHabitType("morning");
     setHabitPoints("10");
     setHabitMustDo(false);
-    setSyncToCalendar(false);
     setIsDialogOpen(true);
   };
 
@@ -48,7 +46,6 @@ export default function Habits() {
     setHabitType(habit.type);
     setHabitPoints(habit.points.toString());
     setHabitMustDo(habit.mustDo);
-    setSyncToCalendar(false);
     setIsDialogOpen(true);
   };
 
@@ -80,19 +77,6 @@ export default function Habits() {
             points: parseInt(habitPoints) || 10,
             mustDo: habitMustDo,
             resetTime: getResetTime(habitType)
-        });
-    }
-
-    if (syncToCalendar && isGoogleCalendarConnected) {
-        const timeRange = getResetTime(habitType);
-        const startTime = timeRange.split(' - ')[0];
-        
-        syncToGoogleCalendar({
-            title: `${habitTitle} (${habitType} routine)`,
-            time: startTime,
-            date: new Date().toISOString().split("T")[0],
-            type: "task",
-            notes: `Routine: ${habitType} | ${timeRange}`
         });
     }
 
@@ -153,15 +137,6 @@ export default function Habits() {
                 <Switch id="mustDo" checked={habitMustDo} onCheckedChange={setHabitMustDo} className="data-[state=checked]:bg-[#FF9F0A]" />
               </div>
               
-              {isGoogleCalendarConnected && (
-                <div className="flex items-center justify-between py-2 border-t border-white/5 pt-4 mt-2">
-                    <div className="flex items-center gap-2">
-                        <Calendar size={16} className="text-[#EA4335]" />
-                        <Label htmlFor="gcal" className="text-white font-medium cursor-pointer">Add to Google Calendar</Label>
-                    </div>
-                    <Switch id="gcal" checked={syncToCalendar} onCheckedChange={setSyncToCalendar} className="data-[state=checked]:bg-[#EA4335]" />
-                </div>
-              )}
             </div>
             <Button onClick={handleSaveHabit} className="w-full bg-[#0A84FF] text-white hover:bg-[#007AFF] font-bold rounded-[12px] h-12 text-base">
               {isEditing ? "Save Changes" : "Create Habit"}
@@ -258,9 +233,9 @@ function HabitSection({ title, time, habits, isOpen, onToggle, onToggleHabit, on
                                 )}>
                                     {habit.completed && <Check size={14} className="text-white font-bold" />}
                                 </div>
-                                <div className="flex-1 flex justify-between items-center">
+                                <div className="flex-1 flex justify-between items-center gap-3 min-w-0">
                                     <span className={cn(
-                                        "text-base font-medium transition-colors",
+                                        "text-base font-medium transition-colors break-words whitespace-normal leading-snug",
                                         habit.completed ? "text-[#8E8E93] line-through" : "text-white"
                                     )}>
                                         {habit.title}

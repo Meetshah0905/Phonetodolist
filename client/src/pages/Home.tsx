@@ -5,7 +5,7 @@ import { LiquidCard } from "@/components/ui/LiquidCard";
 import { useGame } from "@/lib/store";
 import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Plus, Check, Clock, Calendar as CalendarIcon, Pencil, Trash2, TrendingUp, Sparkles, Loader2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Check, Clock, Pencil, Trash2, TrendingUp, Sparkles, Loader2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ import { apiGet } from "@/apiClient";
 export default function Home() {
   const { 
     user, tasks, reorderTask, toggleTask, addTask, updateTask, deleteTask, getAISuggestion, 
-    lifetimeXP, nextRankXP, isGoogleCalendarConnected, syncToGoogleCalendar 
+    lifetimeXP, nextRankXP
   } = useGame();
 
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -38,8 +38,6 @@ export default function Home() {
   const [taskNotes, setTaskNotes] = useState("");
   const [aiSuggestion, setAiSuggestion] = useState<number | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [syncToCalendar, setSyncToCalendar] = useState(false);
-  const [calendarItemType, setCalendarItemType] = useState<"task" | "event">("task");
 
   const level = Math.max(1, Math.floor(lifetimeXP / 1000) + 1);
   const progressToNextLevel = nextRankXP > 0 ? Math.min(100, Math.round((lifetimeXP / nextRankXP) * 100)) : 0;
@@ -101,8 +99,6 @@ export default function Home() {
     setTaskEndTime("");
     setTaskPoints("");
     setTaskNotes("");
-    setSyncToCalendar(false);
-    setCalendarItemType("task");
     setAiSuggestion(null);
     setIsDialogOpen(true);
   };
@@ -116,8 +112,6 @@ export default function Home() {
     setTaskEndTime("");
     setTaskPoints(task.points.toString());
     setTaskNotes(task.notes || "");
-    setSyncToCalendar(false);
-    setCalendarItemType("task");
     setAiSuggestion(task.points);
     setIsDialogOpen(true);
   };
@@ -133,12 +127,6 @@ export default function Home() {
         addTask({
             title: taskTitle, time: taskTime || "30m", points: finalPoints,
             date: selectedDate.toISOString().split("T")[0], priority: "medium", notes: taskNotes
-        });
-    }
-    if (syncToCalendar && isGoogleCalendarConnected) {
-        syncToGoogleCalendar({
-            title: taskTitle, time: taskScheduledTime || taskTime, endTime: taskEndTime,
-            date: selectedDate.toISOString().split("T")[0], type: calendarItemType, notes: taskNotes
         });
     }
     setIsDialogOpen(false);
@@ -240,11 +228,6 @@ export default function Home() {
               <div className="grid grid-cols-2 gap-4"><div className="grid gap-2"><Label htmlFor="time">Duration</Label><Input id="time" value={taskTime} onChange={(e) => setTaskTime(e.target.value)} className="bg-[#2C2C2E] border-transparent text-white rounded-[12px] h-12" placeholder="30m" /></div><div className="grid gap-2"><Label htmlFor="scheduledTime">Scheduled</Label><Input id="scheduledTime" type="time" value={taskScheduledTime} onChange={(e) => setTaskScheduledTime(e.target.value)} className="bg-[#2C2C2E] border-transparent text-white rounded-[12px] h-12" /></div></div>
               <div className="grid gap-2"><Label htmlFor="points">Points (XP)</Label><Input id="points" type="number" value={taskPoints} onChange={(e) => { setTaskPoints(e.target.value); setAiSuggestion(null); }} className="bg-[#2C2C2E] border-transparent text-white rounded-[12px] h-12" placeholder="100" /></div>
               <div className="grid gap-2"><Label htmlFor="notes">Notes</Label><Textarea id="notes" value={taskNotes} onChange={(e) => setTaskNotes(e.target.value)} className="bg-[#2C2C2E] border-transparent text-white rounded-[12px]" placeholder="Details..." /></div>
-              {isGoogleCalendarConnected && (
-                <div className="space-y-3 bg-[#2C2C2E] rounded-[12px] p-3 border border-white/5">
-                    <div className="flex items-center justify-between"><div className="flex items-center gap-2"><CalendarIcon size={16} className="text-[#EA4335]" /><Label htmlFor="gcal" className="text-white cursor-pointer">Add to Google Calendar</Label></div><Switch id="gcal" checked={syncToCalendar} onCheckedChange={setSyncToCalendar} className="data-[state=checked]:bg-[#EA4335]" /></div>
-                </div>
-              )}
             </div>
             <Button onClick={handleSaveTask} className="w-full bg-[#0A84FF] text-white hover:bg-[#007AFF] font-bold rounded-[12px] h-12 text-base">{isEditing ? "Save" : "Create"}</Button>
           </DialogContent>
@@ -259,7 +242,18 @@ export default function Home() {
             onClick={() => toggleTask(task.id)}
           >
             <div className={cn("w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 relative transition-colors duration-200", task.completed ? "bg-[#0A84FF] border-[#0A84FF]" : "border-[#8E8E93] group-hover:border-[#0A84FF]")}>{task.completed && <Check size={14} className="text-white font-bold" />}</div>
-            <div className="flex-1 min-w-0"><h3 className={cn("text-base font-semibold truncate transition-all duration-200", task.completed ? "text-[#8E8E93] line-through" : "text-white")}>{task.title}</h3><div className="flex items-center gap-3 mt-1"><span className="text-xs text-[#8E8E93] font-medium flex items-center gap-1"><Clock size={12} /> {task.time}</span><span className="bg-[#0A84FF]/10 text-[#0A84FF] px-2 py-0.5 rounded-[6px] text-[10px] font-bold border border-[#0A84FF]/20">{task.points} PTS</span></div></div>
+            <div className="flex-1 min-w-0">
+              <h3 className={cn("text-base font-semibold truncate transition-all duration-200", task.completed ? "text-[#8E8E93] line-through" : "text-white")}>{task.title}</h3>
+              {task.notes && (
+                <p className="text-xs text-[#8E8E93] mt-1 line-clamp-2 break-words">
+                  {task.notes}
+                </p>
+              )}
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-xs text-[#8E8E93] font-medium flex items-center gap-1"><Clock size={12} /> {task.time}</span>
+                <span className="bg-[#0A84FF]/10 text-[#0A84FF] px-2 py-0.5 rounded-[6px] text-[10px] font-bold border border-[#0A84FF]/20">{task.points} PTS</span>
+              </div>
+            </div>
             <div className="flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
               <div className="flex flex-col gap-1 mr-1">
                 <Button variant="ghost" size="icon" className="h-7 w-7 text-[#8E8E93] hover:text-white active:scale-95" onClick={(e) => handleReorder(task.id, "up", e)}>

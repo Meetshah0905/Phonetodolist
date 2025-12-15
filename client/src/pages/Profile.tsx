@@ -1,15 +1,14 @@
 import { MobileShell } from "@/components/layout/MobileShell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useGame, RANKS } from "@/lib/store"; // Imported RANKS
-import { User, Mail, Calendar, Trophy, Lock } from "lucide-react";
+import { User, Mail, Trophy, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 export default function Profile() {
-  const { user, rank, lifetimeXP, isGoogleCalendarConnected, connectGoogleCalendar, disconnectGoogleCalendar } = useGame();
+  const { user, rank, lifetimeXP } = useGame();
 
   // Find index of current rank
   const currentRankIndex = RANKS.findIndex(r => r.name === rank);
@@ -47,22 +46,6 @@ export default function Profile() {
                         <Label className="text-xs text-[#8E8E93]">Email</Label>
                         <div className="text-white font-medium">meet@phonetodolist.com</div>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <div className="space-y-4">
-            <h3 className="text-[#8E8E93] text-xs font-bold uppercase tracking-wider ml-1">Integrations</h3>
-            <div className="bg-[#1C1C1E] rounded-[20px] p-4 border border-white/5">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-[#EA4335]/20 flex items-center justify-center text-[#EA4335]"><Calendar size={20} /></div>
-                        <div>
-                            <div className="text-white font-medium">Google Calendar</div>
-                            <div className="text-xs text-[#8E8E93]">{isGoogleCalendarConnected ? "Connected" : "Not connected"}</div>
-                        </div>
-                    </div>
-                    <Switch checked={isGoogleCalendarConnected} onCheckedChange={(c) => c ? connectGoogleCalendar() : disconnectGoogleCalendar()} />
                 </div>
             </div>
         </div>
