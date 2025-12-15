@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 
 export default function Habits() {
-  const { habits, toggleHabit, addHabit, updateHabit, deleteHabit, isGoogleCalendarConnected, syncToGoogleCalendar } = useGame();
+  const { habits, toggleHabit, addHabit, updateHabit, deleteHabit, reorderHabit, isGoogleCalendarConnected, syncToGoogleCalendar } = useGame();
   const [openSections, setOpenSections] = useState(["morning", "afternoon", "evening", "night"]);
   
   const morningHabits = habits.filter(h => h.type === "morning");
@@ -180,6 +180,7 @@ export default function Habits() {
             onToggleHabit={toggleHabit}
             onEdit={handleOpenEdit}
             onDelete={handleDeleteHabit}
+            onReorder={reorderHabit}
         />
 
         {/* Afternoon Section */}
@@ -192,6 +193,7 @@ export default function Habits() {
             onToggleHabit={toggleHabit}
             onEdit={handleOpenEdit}
             onDelete={handleDeleteHabit}
+            onReorder={reorderHabit}
         />
 
         {/* Evening Section */}
@@ -204,6 +206,7 @@ export default function Habits() {
             onToggleHabit={toggleHabit}
             onEdit={handleOpenEdit}
             onDelete={handleDeleteHabit}
+            onReorder={reorderHabit}
         />
 
         {/* Night Section */}
@@ -216,6 +219,7 @@ export default function Habits() {
             onToggleHabit={toggleHabit}
             onEdit={handleOpenEdit}
             onDelete={handleDeleteHabit}
+            onReorder={reorderHabit}
         />
       </div>
     </MobileShell>
@@ -223,7 +227,7 @@ export default function Habits() {
 }
 
 // Reusable Section Component
-function HabitSection({ title, time, habits, isOpen, onToggle, onToggleHabit, onEdit, onDelete }: any) {
+function HabitSection({ title, time, habits, isOpen, onToggle, onToggleHabit, onEdit, onDelete, onReorder }: any) {
     if (habits.length === 0) return null;
 
     return (
@@ -240,10 +244,13 @@ function HabitSection({ title, time, habits, isOpen, onToggle, onToggleHabit, on
                 <CollapsibleContent>
                     <div className="px-5 pb-5 space-y-1">
                         {habits.map((habit: any) => (
-                            <div 
+            <div 
                                 key={habit.id}
                                 onClick={() => onToggleHabit(habit.id)}
-                                className="flex items-center gap-4 py-3 cursor-pointer group border-b border-white/5 last:border-0 relative"
+                                className={cn(
+                                    "flex items-center gap-4 py-3 cursor-pointer group border-b border-white/5 last:border-0 relative rounded-lg px-1",
+                                    habit.mustDo && !habit.completed ? "bg-[#FF9F0A]/5 border-l-4 border-[#FF9F0A] shadow-[0_0_0_3px_rgba(255,159,10,0.08)] animate-pulse" : ""
+                                )}
                             >
                                 <div className={cn(
                                     "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300",
@@ -259,13 +266,31 @@ function HabitSection({ title, time, habits, isOpen, onToggle, onToggleHabit, on
                                         {habit.title}
                                     </span>
                                     {habit.mustDo && !habit.completed && (
-                                        <span className="text-[10px] font-bold text-[#FF9F0A] bg-[#FF9F0A]/10 px-2 py-0.5 rounded-[6px] border border-[#FF9F0A]/20 uppercase tracking-wide">
+                                        <span className="text-[10px] font-bold text-[#FF9F0A] bg-[#FF9F0A]/15 px-2 py-0.5 rounded-[6px] border border-[#FF9F0A]/30 uppercase tracking-wide animate-pulse">
                                             Must Do
                                         </span>
                                     )}
                                 </div>
                                 
-                                <div className="absolute right-0 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-[#1C1C1E] pl-2">
+                                <div className="absolute right-0 flex gap-1 items-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-[#1C1C1E] pl-2">
+                                     <div className="flex flex-col gap-1">
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-7 w-7 text-[#8E8E93] hover:text-white active:scale-95"
+                                            onClick={(e) => { e.stopPropagation(); onReorder(habit.id, "up"); }}
+                                        >
+                                            <ChevronUp size={14} />
+                                        </Button>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-7 w-7 text-[#8E8E93] hover:text-white active:scale-95"
+                                            onClick={(e) => { e.stopPropagation(); onReorder(habit.id, "down"); }}
+                                        >
+                                            <ChevronDown size={14} />
+                                        </Button>
+                                     </div>
                                      <Button 
                                         variant="ghost" 
                                         size="icon" 

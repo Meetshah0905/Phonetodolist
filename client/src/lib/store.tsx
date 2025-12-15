@@ -118,10 +118,12 @@ type GameState = {
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   toggleTask: (id: string) => void;
+  reorderTask: (id: string, direction: "up" | "down") => void;
   addHabit: (habit: Omit<Habit, "id" | "completed">) => void;
   updateHabit: (id: string, updates: Partial<Habit>) => void;
   deleteHabit: (id: string) => void;
   toggleHabit: (id: string) => void;
+  reorderHabit: (id: string, direction: "up" | "down") => void;
   addBook: (book: Omit<Book, "id" | "status" | "progress" | "currentPage">) => void;
   updateBook: (id: string, updates: Partial<Book>) => void;
   deleteBook: (id: string) => void;
@@ -202,6 +204,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isHydratingRef = useRef(false);
+  const localSaveErrorRef = useRef(false);
 
   // RESTORED: Play Sound Functions - Preload audio for instant playback
   useEffect(() => {
@@ -273,7 +276,24 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     // Save locally for offline resilience
     const localPayload: StoredState = { points, lifetimeXP, tasks, habits, books, wishlist, journalEntries };
+<<<<<<< Current (Your changes)
     localStorage.setItem("gameState", JSON.stringify(localPayload));
+=======
+    try {
+      localStorage.setItem("gameState", JSON.stringify(localPayload));
+      localSaveErrorRef.current = false;
+    } catch (err: any) {
+      if (!localSaveErrorRef.current) {
+        localSaveErrorRef.current = true;
+        toast({
+          title: "Storage almost full",
+          description: "We could not save everything locally. Try deleting large images/files or free some space.",
+          variant: "destructive",
+        });
+      }
+      console.error("Local save failed", err);
+    }
+>>>>>>> Incoming (Background Agent changes)
 
     // And also push to backend (best effort)
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -372,6 +392,22 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
+  // Reorder tasks within the same date bucket
+  const reorderTask = (id: string, direction: "up" | "down") => {
+    setTasks(prev => {
+      const idx = prev.findIndex(t => t.id === id);
+      if (idx === -1) return prev;
+      const targetDate = prev[idx].date;
+      const sameDayIndexes = prev.map((t, i) => t.date === targetDate ? i : -1).filter(i => i >= 0);
+      const position = sameDayIndexes.indexOf(idx);
+      const swapWith = direction === "up" ? sameDayIndexes[position - 1] : sameDayIndexes[position + 1];
+      if (swapWith === undefined) return prev;
+      const copy = [...prev];
+      [copy[idx], copy[swapWith]] = [copy[swapWith], copy[idx]];
+      return copy;
+    });
+  };
+
   const addHabit = (h: Omit<Habit, "id" | "completed">) => setHabits(prev => [...prev, { ...h, id: Math.random().toString(), completed: false }]);
   const updateHabit = (id: string, u: Partial<Habit>) => setHabits(prev => prev.map(h => h.id === id ? { ...h, ...u } : h));
   const deleteHabit = (id: string) => setHabits(prev => prev.filter(h => h.id !== id));
@@ -391,6 +427,21 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
       return h;
     }));
+  };
+
+  const reorderHabit = (id: string, direction: "up" | "down") => {
+    setHabits(prev => {
+      const idx = prev.findIndex(h => h.id === id);
+      if (idx === -1) return prev;
+      const targetType = prev[idx].type;
+      const sameTypeIndexes = prev.map((h, i) => h.type === targetType ? i : -1).filter(i => i >= 0);
+      const position = sameTypeIndexes.indexOf(idx);
+      const swapWith = direction === "up" ? sameTypeIndexes[position - 1] : sameTypeIndexes[position + 1];
+      if (swapWith === undefined) return prev;
+      const copy = [...prev];
+      [copy[idx], copy[swapWith]] = [copy[swapWith], copy[idx]];
+      return copy;
+    });
   };
 
   const addBook = (b: Omit<Book, "id" | "status" | "progress" | "currentPage">) => setBooks(prev => [...prev, { ...b, id: Math.random().toString(), status: "not-started", progress: 0, currentPage: 0 }]);
@@ -415,7 +466,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         points, tasks, habits, books, wishlist, journalEntries, lifetimeXP, rank, nextRankXP, levelUp,
         dismissLevelUp, addPoints, deductPoints,
         addTask, updateTask, deleteTask, toggleTask,
-        addHabit, updateHabit, deleteHabit, toggleHabit,
+        reorderTask,
+        addHabit, updateHabit, deleteHabit, toggleHabit, reorderHabit,
         addBook, updateBook, deleteBook, updateBookProgress,
         addWishlistItem, updateWishlistItem, deleteWishlistItem, redeemItem,
         getAISuggestion, saveJournalEntry, user, login, logout,

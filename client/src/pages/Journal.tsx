@@ -219,6 +219,7 @@ export default function Journal() {
     
     try {
       let audioBase64: string | undefined;
+      let synced = true;
       
       // Convert audio blob to base64 if exists
       if (audioChunksRef.current.length > 0) {
@@ -235,24 +236,29 @@ export default function Journal() {
 
       // Save to backend with audio
       if (user?.id) {
-        const token = localStorage.getItem("token") || undefined;
-        const res = await apiPost(
-          "/api/journal/save",
-          {
-            userId: user.id,
-            text: entry || "[Audio Note]", // Default text if only audio
-            audioBase64,
-          },
-          token,
-        );
-        if (!res.ok) throw new Error("Failed to save entry");
+        try {
+          const token = localStorage.getItem("token") || undefined;
+          const res = await apiPost(
+            "/api/journal/save",
+            {
+              userId: user.id,
+              text: entry || "[Audio Note]", // Default text if only audio
+              audioBase64,
+            },
+            token,
+          );
+          if (!res.ok) throw new Error("Failed to save entry");
+        } catch (err) {
+          synced = false;
+          console.error("Journal sync failed, saving locally instead", err);
+        }
       }
 
       await saveJournalEntry(entry || "[Audio Note]");
       
       toast({ 
-        title: "Reflection Saved", 
-        description: "+50 pts added to balance" + (audioBase64 ? " (with audio)" : ""),
+        title: synced ? "Reflection Saved" : "Saved Locally",
+        description: (synced ? "+50 pts added to balance" : "Saved offline only — will retry later") + (audioBase64 ? " (with audio)" : ""),
         className: "bg-[#1C1C1E] text-white border border-white/10" 
       });
       

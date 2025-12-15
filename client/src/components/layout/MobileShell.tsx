@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 export function MobileShell({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { rank, lifetimeXP, levelUp, dismissLevelUp, user, nextRankXP } = useGame();
+  const safeBottom = "env(safe-area-inset-bottom, 0px)";
 
   const navItems = [
     { icon: Home, label: "Home", path: "/" },
@@ -69,14 +70,20 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Content Layer */}
-      <main className="flex-1 relative z-10 overflow-y-auto pb-24 pt-16 scrollbar-hide">
+      <main
+        className="flex-1 relative z-10 overflow-y-auto pt-16 scrollbar-hide"
+        style={{ paddingBottom: "calc(120px + " + safeBottom + ")" }}
+      >
         <div className="max-w-md mx-auto min-h-full px-4 pt-4">
             {children}
         </div>
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 glass-nav pb-safe">
+      <nav
+        className="fixed inset-x-0 bottom-0 z-50 glass-nav"
+        style={{ paddingBottom: "calc(12px + " + safeBottom + ")" }}
+      >
         <div className="max-w-md mx-auto flex justify-around items-center h-16">
           {navItems.map((item) => {
             const isActive = location === item.path;
